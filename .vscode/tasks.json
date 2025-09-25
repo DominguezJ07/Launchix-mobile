@@ -1,0 +1,101 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Debug APK",
+			"type": "shell",
+			"command": ".\\gradlew clean assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "Delete Splash Logo",
+			"type": "shell",
+			"command": "del \"c:\\Users\\vsp\\AndroidStudioProjects\\Launchix\\app\\src\\main\\res\\drawable\\launchix_logo.jpg\"",
+			"group": "build"
+		},
+		{
+			"label": "Build Light Theme",
+			"type": "shell",
+			"command": ".\\gradlew assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "Build Clean Light Theme",
+			"type": "shell",
+			"command": ".\\gradlew clean assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "Build Final Light Theme",
+			"type": "shell",
+			"command": ".\\gradlew assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "Assemble Debug APK",
+			"type": "shell",
+			"command": ".\\gradlew assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "Clean Build",
+			"type": "shell",
+			"command": ".\\gradlew clean",
+			"group": "build"
+		},
+		{
+			"label": "Stop Gradle Daemons",
+			"type": "shell",
+			"command": ".\\gradlew --stop",
+			"group": "build"
+		},
+		{
+			"label": "Assemble Debug No Daemon",
+			"type": "shell",
+			"command": ".\\gradlew assembleDebug --no-daemon",
+			"group": "build"
+		},
+		{
+			"label": "Clean and Assemble Debug",
+			"type": "shell",
+			"command": ".\\gradlew clean assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "Clean Build No Daemon",
+			"type": "shell",
+			"command": ".\\gradlew clean --no-daemon",
+			"group": "build"
+		},
+		{
+			"label": "Stop All Daemons",
+			"type": "shell",
+			"command": ".\\gradlew --stop",
+			"group": "build"
+		},
+		{
+			"label": "Final Clean Build",
+			"type": "shell",
+			"command": ".\\gradlew clean assembleDebug --no-daemon",
+			"group": "build"
+		},
+		{
+			"label": "Delete ThemeNew.kt",
+			"type": "shell",
+			"command": "Remove-Item \"c:\\Users\\vsp\\AndroidStudioProjects\\Launchix\\app\\src\\main\\java\\com\\ec\\launchix\\ui\\theme\\ThemeNew.kt\" -Force",
+			"group": "build"
+		},
+		{
+			"label": "Delete ThemeClean.kt",
+			"type": "shell",
+			"command": "Remove-Item \"c:\\Users\\vsp\\AndroidStudioProjects\\Launchix\\app\\src\\main\\java\\com\\ec\\launchix\\ui\\theme\\ThemeClean.kt\" -Force",
+			"group": "build"
+		},
+		{
+			"label": "Kill Java processes",
+			"type": "shell",
+			"command": "taskkill /F /IM java.exe",
+			"group": "build"
+		}
+	]
+}

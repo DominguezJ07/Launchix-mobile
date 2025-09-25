@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launchix_blue">#2196F3</color>
+    <color name="launchix_blue_dark">#1976D2</color>
+    <color name="launchix_blue_light">#E3F2FD</color>
+    <color name="launchix_blue_accent">#BBDEFB</color>
+    <color name="gray_900">#212121</color>
+    <color name="surface_white">#FFFFFF</color>
+</resources>

@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Launchix</string>
+    <string name="welcome_message">¡Bienvenido de vuelta!</string>
+    <string name="subtitle_message">Tu plataforma de e-commerce para emprendedores</string>
+    <string name="search_products">Buscar productos...</string>
+    <string name="search_services">Buscar servicios...</string>
+    <string name="search_hint">Buscar productos y servicios...</string>
+    <string name="featured_products">Productos Destacados</string>
+    <string name="featured_services">Servicios Destacados</string>
+    <string name="categories">Categorías</string>
+    <string name="see_all">Ver todos</string>
+    <string name="add_to_cart">Agregar al carrito</string>
+    <string name="buy_now">Comprar ahora</string>
+    <string name="contract_service">Contratar</string>
+    <string name="on_sale">¡En oferta!</string>
+    <string name="free_shipping">Envío gratis</string>
+    <string name="loading">Cargando productos y servicios...</string>
+</resources>
