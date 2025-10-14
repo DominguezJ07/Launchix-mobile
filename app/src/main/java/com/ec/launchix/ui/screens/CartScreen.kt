@@ -34,9 +34,12 @@ data class CartItem(
 
 @Composable
 fun CartScreen(
-    cartViewModel: CartViewModel = viewModel()
+    cartViewModel: CartViewModel = viewModel(),
+    onNavigateToProducts: () -> Unit = {}
 ) {
     val cartItems by cartViewModel.cartItems.collectAsState()
+    var showCheckoutDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -106,7 +109,7 @@ fun CartScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { /* Navegar a productos */ },
+                    onClick = onNavigateToProducts,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
@@ -190,7 +193,7 @@ fun CartScreen(
                             )
                         }
 
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -213,7 +216,7 @@ fun CartScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
-                            onClick = { /* Proceder al checkout */ },
+                            onClick = { showCheckoutDialog = true },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
@@ -232,6 +235,315 @@ fun CartScreen(
             }
         }
     }
+
+    // Diálogo de confirmación de checkout
+    if (showCheckoutDialog) {
+        CheckoutDialog(
+            totalAmount = cartViewModel.getSubtotal(),
+            itemCount = cartViewModel.getTotalItems(),
+            onDismiss = { showCheckoutDialog = false },
+            onConfirm = {
+                showCheckoutDialog = false
+                showSuccessDialog = true
+            }
+        )
+    }
+
+    // Diálogo de pedido exitoso
+    if (showSuccessDialog) {
+        OrderSuccessDialog(
+            onDismiss = {
+                showSuccessDialog = false
+                cartViewModel.clearCart()
+                onNavigateToProducts()
+            }
+        )
+    }
+}
+
+@Composable
+fun CheckoutDialog(
+    totalAmount: Double,
+    itemCount: Int,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    var selectedPaymentMethod by remember { mutableStateOf("Tarjeta de Crédito") }
+    var deliveryAddress by remember { mutableStateOf("") }
+    var deliveryNotes by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Payment,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = {
+            Text(
+                "Confirmar Pedido",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Total a pagar:",
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    "$${String.format("%.2f", totalAmount)}",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 18.sp
+                                )
+                            }
+                            Text(
+                                "$itemCount artículos",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        "Método de Pago",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
+                    )
+                }
+
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PaymentMethodOption(
+                            icon = Icons.Default.CreditCard,
+                            title = "Tarjeta de Crédito",
+                            selected = selectedPaymentMethod == "Tarjeta de Crédito",
+                            onClick = { selectedPaymentMethod = "Tarjeta de Crédito" }
+                        )
+                        PaymentMethodOption(
+                            icon = Icons.Default.AccountBalance,
+                            title = "Transferencia Bancaria",
+                            selected = selectedPaymentMethod == "Transferencia Bancaria",
+                            onClick = { selectedPaymentMethod = "Transferencia Bancaria" }
+                        )
+                        PaymentMethodOption(
+                            icon = Icons.Default.Money,
+                            title = "Efectivo contra entrega",
+                            selected = selectedPaymentMethod == "Efectivo contra entrega",
+                            onClick = { selectedPaymentMethod = "Efectivo contra entrega" }
+                        )
+                    }
+                }
+
+                item {
+                    Text(
+                        "Dirección de Entrega",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = deliveryAddress,
+                        onValueChange = { deliveryAddress = it },
+                        label = { Text("Dirección completa") },
+                        leadingIcon = { Icon(Icons.Default.LocationOn, null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = deliveryNotes,
+                        onValueChange = { deliveryNotes = it },
+                        label = { Text("Notas adicionales (opcional)") },
+                        leadingIcon = { Icon(Icons.Default.Note, null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3,
+                        placeholder = { Text("Ej: Casa azul, portón negro...") }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (deliveryAddress.isNotBlank()) {
+                        onConfirm()
+                    }
+                },
+                enabled = deliveryAddress.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Confirmar Pedido")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+fun PaymentMethodOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surface
+        ),
+        border = if (selected) androidx.compose.foundation.BorderStroke(
+            2.dp,
+            MaterialTheme.colorScheme.primary
+        ) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                title,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+            if (selected) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun OrderSuccessDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(64.dp)
+            )
+        },
+        title = {
+            Text(
+                "¡Pedido Realizado!",
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "Tu pedido ha sido procesado exitosamente.",
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
+                Text(
+                    "Recibirás una notificación cuando tu pedido esté en camino.",
+                    textAlign = TextAlign.Center,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Número de orden: #${(1000..9999).random()}",
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Continuar Comprando")
+            }
+        }
+    )
 }
 
 @Composable

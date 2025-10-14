@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,7 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ec.launchix.data.SampleData
-import com.ec.launchix.ui.theme.LaunchixTheme
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 
 // Data classes
 data class NotificationItem(
@@ -66,6 +68,14 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     var searchHistory by remember { mutableStateOf(listOf("iPhone", "Reparación", "AirPods")) }
+
+    // ✅ NUEVO: Estado para detectar el scroll
+    val listState = rememberLazyListState()
+    val isScrolled by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
 
     // Filtros y sugerencias
     val filteredProducts = remember(searchQuery) {
@@ -113,7 +123,7 @@ fun HomeScreen(
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
-        // Header
+        // ✅ Header con animación de colapso
         HeaderSection(
             notificationCount = notificationCount,
             searchQuery = searchQuery,
@@ -123,6 +133,7 @@ fun HomeScreen(
             filteredProducts = filteredProducts,
             filteredServices = filteredServices,
             favoriteProducts = favoriteProducts,
+            isCollapsed = isScrolled,
             onNotificationsClick = { showNotifications = true },
             onQueryChange = { searchQuery = it },
             onSearchSubmit = { query ->
@@ -149,8 +160,9 @@ fun HomeScreen(
             }
         )
 
-        // Contenido principal
+        // ✅ Contenido principal con listState
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -257,6 +269,7 @@ private fun HeaderSection(
     filteredProducts: List<com.ec.launchix.data.Product>,
     filteredServices: List<com.ec.launchix.data.Service>,
     favoriteProducts: Set<String>,
+    isCollapsed: Boolean,
     onNotificationsClick: () -> Unit,
     onQueryChange: (String) -> Unit,
     onSearchSubmit: (String) -> Unit,
@@ -265,26 +278,64 @@ private fun HeaderSection(
     onServiceClick: (com.ec.launchix.data.Service) -> Unit,
     onFavoriteToggle: (String) -> Unit
 ) {
+    // ✅ Animaciones para el colapso
+    val topPadding by animateDpAsState(
+        targetValue = if (isCollapsed) 8.dp else 16.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    val bottomPadding by animateDpAsState(
+        targetValue = if (isCollapsed) 8.dp else 16.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    val titleSize by animateDpAsState(
+        targetValue = if (isCollapsed) 20.dp else 24.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 4.dp
+        shadowElevation = if (isCollapsed) 8.dp else 4.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = topPadding,
+                bottom = bottomPadding
+            )
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("¡Hola! Bienvenido de vuelta", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
-                    Text("Launchix", color = MaterialTheme.colorScheme.onPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    if (!isCollapsed) {
+                        Text(
+                            "¡Hola! Bienvenido de vuelta",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Text(
+                        "Launchix",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = titleSize.value.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 Row {
                     Box {
                         IconButton(onClick = onNotificationsClick) {
-                            Icon(Icons.Default.Notifications, "Notificaciones", tint = MaterialTheme.colorScheme.onPrimary)
+                            Icon(
+                                Icons.Default.Notifications,
+                                "Notificaciones",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
                         if (notificationCount > 0) {
                             Badge(
@@ -294,12 +345,16 @@ private fun HeaderSection(
                         }
                     }
                     IconButton(onClick = { /* Carrito */ }) {
-                        Icon(Icons.Default.ShoppingCart, "Carrito", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(
+                            Icons.Default.ShoppingCart,
+                            "Carrito",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (isCollapsed) 8.dp else 16.dp))
 
             SearchBar(
                 query = searchQuery,
@@ -316,7 +371,8 @@ private fun HeaderSection(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(if (isCollapsed) 12.dp else 16.dp)
             ) {
                 SearchContent(
                     searchQuery = searchQuery,
@@ -543,7 +599,6 @@ fun SearchResultProductItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Imagen del producto
             AsyncImage(
                 model = product.imageUrl,
                 contentDescription = product.name,
@@ -582,7 +637,6 @@ fun SearchResultServiceItem(service: com.ec.launchix.data.Service, onClick: () -
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Imagen del servicio
             AsyncImage(
                 model = service.imageUrl,
                 contentDescription = service.name,
@@ -624,7 +678,6 @@ fun ProductCard(
             Box(
                 modifier = Modifier.fillMaxWidth().height(120.dp)
             ) {
-                // Imagen del producto
                 AsyncImage(
                     model = product.imageUrl,
                     contentDescription = product.name,
@@ -667,12 +720,12 @@ fun ProductCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("$${product.price}", fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                    Text("${product.price}", fontSize = 16.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary)
                     product.originalPrice?.let { original ->
                         if (original > product.price) {
                             Text(
-                                "$${original}",
+                                "${original}",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(start = 4.dp),
@@ -697,7 +750,6 @@ fun ServiceCard(service: com.ec.launchix.data.Service, onClick: () -> Unit) {
             Box(
                 modifier = Modifier.fillMaxWidth().height(120.dp)
             ) {
-                // Imagen del servicio
                 AsyncImage(
                     model = service.imageUrl,
                     contentDescription = service.name,
@@ -776,7 +828,6 @@ fun ProductDetailModal(
         },
         text = {
             Column {
-                // Imagen del producto
                 AsyncImage(
                     model = product.imageUrl,
                     contentDescription = product.name,
@@ -867,7 +918,6 @@ fun ServiceDetailModal(service: com.ec.launchix.data.Service, onDismiss: () -> U
         title = { Text(service.name, fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                // Imagen del servicio
                 AsyncImage(
                     model = service.imageUrl,
                     contentDescription = service.name,

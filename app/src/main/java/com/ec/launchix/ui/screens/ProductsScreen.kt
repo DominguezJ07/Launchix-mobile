@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,6 +40,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 
 // ViewModel para manejar el carrito compartido
 data class CartItemModel(
@@ -125,6 +128,14 @@ fun ProductsScreen(
     var showCartModal by remember { mutableStateOf(false) }
 
     val cartItems by cartViewModel.cartItems.collectAsState()
+    val listState = rememberLazyListState()
+
+    // Detectar si el usuario ha hecho scroll
+    val isScrolled by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
 
     LaunchedEffect(Unit) {
         favoriteProducts = SampleData.sampleProducts.filter { it.isFavorite }.map { it.id }.toSet()
@@ -157,10 +168,12 @@ fun ProductsScreen(
                 isSearchActive = isSearchActive,
                 onQueryChange = { searchQuery = it },
                 onSearchSubmit = { isSearchActive = false },
-                onActiveChange = { isSearchActive = it }
+                onActiveChange = { isSearchActive = it },
+                isCollapsed = isScrolled
             )
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -581,31 +594,96 @@ private fun ProductsHeader(
     isSearchActive: Boolean,
     onQueryChange: (String) -> Unit,
     onSearchSubmit: () -> Unit,
-    onActiveChange: (Boolean) -> Unit
+    onActiveChange: (Boolean) -> Unit,
+    isCollapsed: Boolean
 ) {
+    // Animación suave del padding superior
+    val topPadding by animateDpAsState(
+        targetValue = if (isCollapsed) 8.dp else 20.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    // Animación del tamaño del título
+    val titleSize by animateDpAsState(
+        targetValue = if (isCollapsed) 24.dp else 32.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
+
     Surface(modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
         Box(
             modifier = Modifier.fillMaxWidth().background(
                 brush = Brush.verticalGradient(listOf(Color(0xFFFFB800), Color(0xFFFFFFFF)))
             )
         ) {
-            DecorativeElements()
+            Box(
+                modifier = Modifier.size(150.dp).offset(x = (-40).dp, y = (-40).dp)
+                    .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(75.dp))
+            )
+            Box(
+                modifier = Modifier.size(100.dp).offset(x = 300.dp, y = 20.dp)
+                    .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(50.dp))
+            )
 
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = topPadding, bottom = 20.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    HeaderTitle(selectedCategory = selectedCategory, searchQuery = searchQuery, resultsCount = filteredProducts.size)
+                    Column {
+                        Text(
+                            "Productos",
+                            color = Color.White,
+                            fontSize = titleSize.value.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        HeaderIconButton(icon = Icons.Default.FilterList, contentDescription = "Filtros")
-                        HeaderIconButton(icon = Icons.Default.Sort, contentDescription = "Ordenar")
+                        if (!isCollapsed) {
+                            if (selectedCategory != "Todos") {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(4.dp).background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(2.dp)))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(selectedCategory, color = Color.White.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+
+                            if (searchQuery.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier.background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Search, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("${filteredProducts.size} resultados", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isCollapsed) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(
+                                modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp)).clickable { },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.FilterList, "Filtros", tint = Color.White, modifier = Modifier.size(22.dp))
+                            }
+                            Box(
+                                modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp)).clickable { },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Sort, "Ordenar", tint = Color.White, modifier = Modifier.size(22.dp))
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(if (isCollapsed) 12.dp else 24.dp))
 
                 SearchBar(
                     query = searchQuery,
@@ -625,88 +703,33 @@ private fun ProductsHeader(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    SearchSuggestions(searchQuery = searchQuery, onSuggestionClick = { suggestion ->
-                        onQueryChange(suggestion)
-                        onActiveChange(false)
-                    })
+                    if (searchQuery.isNotBlank()) {
+                        val suggestions = SampleData.sampleProducts
+                            .filter { it.name.lowercase(Locale.getDefault()).contains(searchQuery.lowercase(Locale.getDefault())) }
+                            .take(5)
+
+                        LazyColumn {
+                            items(suggestions) { product ->
+                                ListItem(
+                                    headlineContent = { Text(product.name, fontSize = 14.sp) },
+                                    supportingContent = { Text(product.description, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    leadingContent = {
+                                        Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    },
+                                    modifier = Modifier.clickable {
+                                        onQueryChange(product.name)
+                                        onActiveChange(false)
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DecorativeElements() {
-    Box(
-        modifier = Modifier.size(150.dp).offset(x = (-40).dp, y = (-40).dp)
-            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(75.dp))
-    )
-    Box(
-        modifier = Modifier.size(100.dp).offset(x = 300.dp, y = 20.dp)
-            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(50.dp))
-    )
-}
-
-@Composable
-private fun HeaderTitle(selectedCategory: String, searchQuery: String, resultsCount: Int) {
-    Column {
-        Text("Productos", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
-
-        if (selectedCategory != "Todos") {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(4.dp).background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(2.dp)))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(selectedCategory, color = Color.White.copy(alpha = 0.9f), fontSize = 15.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-
-        if (searchQuery.isNotBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier.background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Search, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("$resultsCount resultados", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                if (!isCollapsed) {
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeaderIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String) {
-    Box(
-        modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp)).clickable { },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription, tint = Color.White, modifier = Modifier.size(22.dp))
-    }
-}
-
-@Composable
-private fun SearchSuggestions(searchQuery: String, onSuggestionClick: (String) -> Unit) {
-    if (searchQuery.isNotBlank()) {
-        val suggestions = SampleData.sampleProducts
-            .filter { it.name.lowercase(Locale.getDefault()).contains(searchQuery.lowercase(Locale.getDefault())) }
-            .take(5)
-
-        LazyColumn {
-            items(suggestions) { product ->
-                ListItem(
-                    headlineContent = { Text(product.name, fontSize = 14.sp) },
-                    supportingContent = { Text(product.description, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingContent = {
-                        Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                    },
-                    modifier = Modifier.clickable { onSuggestionClick(product.name) }
-                )
             }
         }
     }
@@ -921,7 +944,7 @@ fun ProductDetailModal(
                 )
 
                 Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    ProductImage(product = product)
+                    ProductImageCarousel(product = product)
 
                     Column(modifier = Modifier.padding(16.dp)) {
                         ProductInfo(product = product)
@@ -952,10 +975,16 @@ fun ProductDetailModal(
 }
 
 @Composable
-private fun ProductImage(product: com.ec.launchix.data.Product) {
+private fun ProductImageCarousel(product: com.ec.launchix.data.Product) {
+    val images = if (product.imageUrls.isNotEmpty()) product.imageUrls else listOf(product.imageUrl)
+    var currentPage by remember { mutableStateOf(0) }
+
     Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current).data(product.imageUrl).crossfade(true).build(),
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(images[currentPage])
+                .crossfade(true)
+                .build(),
             contentDescription = product.name,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -967,9 +996,59 @@ private fun ProductImage(product: com.ec.launchix.data.Product) {
                     .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text("36% OFF", color = MaterialTheme.colorScheme.onError, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("OFERTA", color = MaterialTheme.colorScheme.onError, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
+
+        if (images.size > 1) {
+            Row(
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                images.indices.forEach { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(if (index == currentPage) 32.dp else 8.dp, 8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                if (index == currentPage) Color.White
+                                else Color.White.copy(alpha = 0.5f)
+                            )
+                            .clickable { currentPage = index }
+                    )
+                }
+            }
+
+            if (currentPage > 0) {
+                IconButton(
+                    onClick = { currentPage-- },
+                    modifier = Modifier.align(Alignment.CenterStart).padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.ChevronLeft, "Anterior", tint = Color.White)
+                }
+            }
+
+            if (currentPage < images.size - 1) {
+                IconButton(
+                    onClick = { currentPage++ },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.ChevronRight, "Siguiente", tint = Color.White)
+                }
+            }
+        }
+
+        Text(
+            text = "${currentPage + 1}/${images.size}",
+            modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -1014,7 +1093,7 @@ private fun ProductInfo(product: com.ec.launchix.data.Product) {
                     textDecoration = TextDecoration.LineThrough
                 )
                 Text(
-                    "36% OFF",
+                    "OFERTA",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold,
@@ -1025,7 +1104,7 @@ private fun ProductInfo(product: com.ec.launchix.data.Product) {
     }
 
     Spacer(modifier = Modifier.height(8.dp))
-    Text("18 disponibles", fontSize = 14.sp, color = MaterialTheme.colorScheme.tertiary)
+    Text("Disponible", fontSize = 14.sp, color = MaterialTheme.colorScheme.tertiary)
 }
 
 @Composable

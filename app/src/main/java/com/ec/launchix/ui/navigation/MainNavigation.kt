@@ -221,7 +221,16 @@ fun MainNavigation(
 
             composable(Screen.Cart.route) {
                 CartScreen(
-                    cartViewModel = cartViewModel // ✅ Pasar el MISMO ViewModel
+                    cartViewModel = cartViewModel, // ✅ Pasar el MISMO ViewModel
+                    onNavigateToProducts = {
+                        navController.navigate(Screen.Products.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
 
