@@ -1,7 +1,6 @@
 package com.ec.launchix.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +16,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 
 data class CartItem(
     val id: String,
@@ -28,25 +33,16 @@ data class CartItem(
 )
 
 @Composable
-fun CartScreen() {
-    // Datos de ejemplo para el carrito
-    var cartItems by remember {
-        mutableStateOf(
-            listOf(
-                CartItem("p1", "iPhone 15 Pro", 999.0, "phone", 1),
-                CartItem("p2", "Camiseta Premium", 29.0, "shirt", 2),
-                CartItem("s1", "Servicio de Limpieza", 80.0, "cleaning", 1, true)
-
-            )
-        )
-    }
+fun CartScreen(
+    cartViewModel: CartViewModel = viewModel()
+) {
+    val cartItems by cartViewModel.cartItems.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Header
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.primary,
@@ -67,7 +63,7 @@ fun CartScreen() {
                 )
 
                 Text(
-                    text = "${cartItems.sumOf { it.quantity }} artículos",
+                    text = "${cartViewModel.getTotalItems()} artículos",
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 14.sp
                 )
@@ -75,7 +71,6 @@ fun CartScreen() {
         }
 
         if (cartItems.isEmpty()) {
-            // Carrito vacío
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -121,7 +116,6 @@ fun CartScreen() {
                 }
             }
         } else {
-            // Carrito con items
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -130,27 +124,28 @@ fun CartScreen() {
                 ) {
                     items(cartItems) { item ->
                         CartItemCard(
-                            item = item,
+                            item = CartItem(
+                                id = item.productId,
+                                name = item.name,
+                                price = item.price,
+                                imageUrl = item.imageUrl,
+                                quantity = item.quantity,
+                                isService = item.isService
+                            ),
                             onQuantityChange = { newQuantity ->
-                                cartItems = cartItems.map { cartItem ->
-                                    if (cartItem.id == item.id) {
-                                        cartItem.copy(quantity = newQuantity)
-                                    } else cartItem
-                                }
+                                cartViewModel.updateQuantity(item.productId, newQuantity)
                             },
                             onRemove = {
-                                cartItems = cartItems.filter { it.id != item.id }
+                                cartViewModel.removeItem(item.productId)
                             }
                         )
                     }
 
-                    // Espaciado extra para el botón flotante
                     item {
                         Spacer(modifier = Modifier.height(120.dp))
                     }
                 }
 
-                // Resumen y botón de checkout
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -171,7 +166,7 @@ fun CartScreen() {
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "$${cartItems.sumOf { it.price * it.quantity }}",
+                                text = "$${String.format("%.2f", cartViewModel.getSubtotal())}",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -190,7 +185,8 @@ fun CartScreen() {
                             Text(
                                 text = "Gratis",
                                 fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
                             )
                         }
 
@@ -207,7 +203,7 @@ fun CartScreen() {
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "$${cartItems.sumOf { it.price * it.quantity }}",
+                                text = "$${String.format("%.2f", cartViewModel.getSubtotal())}",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -253,30 +249,46 @@ fun CartItemCard(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Imagen del item
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                if (item.isService) MaterialTheme.colorScheme.secondaryContainer
-                                else MaterialTheme.colorScheme.primaryContainer,
-                                if (item.isService) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                            )
-                        ),
-                        RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(8.dp))
             ) {
-                Icon(
-                    if (item.isService) Icons.Default.Build else Icons.Default.ShoppingBag,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = if (item.isService) MaterialTheme.colorScheme.onSecondaryContainer
-                          else MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                if (item.imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(item.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = item.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        if (item.isService) MaterialTheme.colorScheme.secondaryContainer
+                                        else MaterialTheme.colorScheme.primaryContainer,
+                                        if (item.isService) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            if (item.isService) Icons.Default.Build else Icons.Default.ShoppingBag,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = if (item.isService) MaterialTheme.colorScheme.onSecondaryContainer
+                            else MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
 
             Column(
@@ -331,7 +343,7 @@ fun CartItemCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$${item.price}",
+                        text = "$${String.format("%.2f", item.price)}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary

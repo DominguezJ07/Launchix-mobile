@@ -46,10 +46,10 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
-    implementation("io.coil-kt:coil-compose:2.4.0")
     implementation(libs.androidx.ui.graphics)
     // Para Coil con Compose
-    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     

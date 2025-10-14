@@ -1,11 +1,12 @@
 package com.ec.launchix.ui.navigation
 
+import android.net.Uri
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -14,16 +15,28 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ec.launchix.ui.screens.*
 import com.ec.launchix.ui.screens.profile.FavoritesScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainNavigation() {
+fun MainNavigation(
+    isDarkMode: Boolean,
+    onDarkModeToggle: (Boolean) -> Unit
+) {
     val navController = rememberNavController()
 
-    // ✅ ESTADO DE SESIÓN A NIVEL SUPERIOR - AQUÍ SE MANTIENE LA SESIÓN
-    var isLoggedIn by remember { mutableStateOf(false) }
+    // ✅ CREAR EL VIEWMODEL AQUÍ - UNA SOLA VEZ
+    val cartViewModel: CartViewModel = viewModel()
+
+    var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+    var profileImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    var userName by rememberSaveable { mutableStateOf("Usuario Launchix") }
+    var userEmail by rememberSaveable { mutableStateOf("usuario@launchix.com") }
+    var userPhone by rememberSaveable { mutableStateOf("+593 999 999 999") }
+
+    val profileImageUri = profileImageUriString?.let { Uri.parse(it) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -32,7 +45,6 @@ fun MainNavigation() {
             val currentDestination = navBackStackEntry?.destination
             val currentRoute = currentDestination?.route
 
-            // Solo mostrar bottom bar en pantallas principales
             val showBottomBar = when {
                 currentRoute == Screen.Home.route -> true
                 currentRoute == Screen.Products.route -> true
@@ -50,22 +62,45 @@ fun MainNavigation() {
                 ) {
                     bottomNavItems.forEach { screen ->
                         val isSelected = when {
-                            // Si estamos en una ruta de categoría y el screen es Home, marcar como seleccionado
                             screen.route == Screen.Home.route && currentRoute?.startsWith("products_category") == true -> true
-                            // Selección normal para otras rutas
                             currentDestination?.hierarchy?.any { it.route == screen.route } == true -> true
                             else -> false
                         }
 
                         NavigationBarItem(
                             icon = {
-                                Icon(
-                                    screen.icon,
-                                    contentDescription = screen.title,
-                                    tint = if (isSelected)
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                // ✅ Mostrar badge con el total de items en el carrito
+                                if (screen.route == Screen.Cart.route) {
+                                    val totalItems = cartViewModel.getTotalItems()
+                                    BadgedBox(
+                                        badge = {
+                                            if (totalItems > 0) {
+                                                Badge(
+                                                    containerColor = MaterialTheme.colorScheme.error,
+                                                    contentColor = MaterialTheme.colorScheme.onError
+                                                ) {
+                                                    Text("$totalItems")
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            screen.icon,
+                                            contentDescription = screen.title,
+                                            tint = if (isSelected)
+                                                MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    Icon(
+                                        screen.icon,
+                                        contentDescription = screen.title,
+                                        tint = if (isSelected)
+                                            MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             },
                             label = {
                                 Text(
@@ -77,17 +112,14 @@ fun MainNavigation() {
                             },
                             selected = isSelected,
                             onClick = {
-                                // Lógica especial para el botón de Home
                                 if (screen.route == Screen.Home.route) {
                                     navController.navigate(Screen.Home.route) {
-                                        // Limpiar todo el stack hasta llegar a Home
                                         popUpTo(Screen.Home.route) {
                                             inclusive = false
                                         }
                                         launchSingleTop = true
                                     }
                                 } else {
-                                    // Comportamiento normal para otras pestañas
                                     navController.navigate(screen.route) {
                                         popUpTo(navController.graph.findStartDestination().id) {
                                             saveState = true
@@ -117,18 +149,12 @@ fun MainNavigation() {
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
-                    onProductClick = { productId ->
-                        // TODO: Navegar a detalles del producto si lo necesitas
-                    },
-                    onServiceClick = { serviceId ->
-                        // TODO: Navegar a detalles del servicio si lo necesitas
-                    },
+                    onProductClick = { productId -> },
+                    onServiceClick = { serviceId -> },
                     onCategoryClick = { categoryName ->
-                        // ✅ Navegar a productos con categoría específica
                         navController.navigate("products_category/$categoryName")
                     },
                     onNavigateToProducts = {
-                        // ✅ Navegar a todos los productos (pestaña normal)
                         navController.navigate(Screen.Products.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
@@ -137,7 +163,6 @@ fun MainNavigation() {
                             restoreState = true
                         }
                     },
-                    // ✅ NUEVO: Navegar a la vista de servicios
                     onNavigateToServices = {
                         navController.navigate(Screen.Services.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -150,16 +175,22 @@ fun MainNavigation() {
                 )
             }
 
-            // Ruta normal de productos (pestaña del bottom nav)
             composable(Screen.Products.route) {
                 ProductsScreen(
-                    onProductClick = { productId ->
-                        // TODO: Navegar a detalles del producto
+                    cartViewModel = cartViewModel, // ✅ Pasar el ViewModel
+                    onProductClick = { productId -> },
+                    onNavigateToCart = {
+                        navController.navigate(Screen.Cart.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
 
-            // ✅ NUEVA RUTA: Productos filtrados por categoría
             composable(
                 route = "products_category/{category}",
                 arguments = listOf(navArgument("category") { type = NavType.StringType })
@@ -167,50 +198,78 @@ fun MainNavigation() {
                 val category = backStackEntry.arguments?.getString("category") ?: "Todos"
 
                 ProductsScreen(
+                    cartViewModel = cartViewModel, // ✅ Pasar el ViewModel
                     initialCategory = category,
-                    onProductClick = { productId ->
-                        // TODO: Navegar a detalles del producto
+                    onProductClick = { productId -> },
+                    onNavigateToCart = {
+                        navController.navigate(Screen.Cart.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
 
             composable(Screen.Services.route) {
                 ServicesScreen(
-                    onServiceClick = { serviceId ->
-                        // TODO: Navegar a detalles del servicio
-                    }
+                    onServiceClick = { serviceId -> }
                 )
             }
 
             composable(Screen.Cart.route) {
-                CartScreen()
+                CartScreen(
+                    cartViewModel = cartViewModel // ✅ Pasar el MISMO ViewModel
+                )
             }
 
-            // ✅ PERFIL CON ESTADO DE SESIÓN MANEJADO AQUÍ
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     navController = navController,
-                    isLoggedIn = isLoggedIn, // ✅ Pasar el estado desde aquí
+                    isLoggedIn = isLoggedIn,
                     onLoginSuccess = {
-                        isLoggedIn = true // ✅ Solo se activa al hacer login exitoso
+                        isLoggedIn = true
                     },
                     onLogout = {
-                        isLoggedIn = false // ✅ Solo se activa al presionar "Cerrar Sesión"
+                        isLoggedIn = false
+                    },
+                    profileImageUri = profileImageUri,
+                    onProfileImageSelected = { uri ->
+                        profileImageUriString = uri?.toString()
+                    },
+                    userName = userName,
+                    userEmail = userEmail,
+                    onUserInfoChange = { name, email ->
+                        userName = name
+                        userEmail = email
                     }
                 )
             }
 
-            // ✅ Todas estas pantallas ya están bien configuradas
             composable("orders") {
                 OrdersScreen(navController = navController)
             }
 
             composable("favorites") {
-                FavoritesScreen(navController = navController) // ✅ Ahora coincide
+                FavoritesScreen(navController = navController)
             }
 
             composable("settings") {
-                SettingsScreen(navController = navController)
+                SettingsScreen(
+                    navController = navController,
+                    userName = userName,
+                    userEmail = userEmail,
+                    userPhone = userPhone,
+                    onUserInfoChange = { name, email, phone ->
+                        userName = name
+                        userEmail = email
+                        userPhone = phone
+                    },
+                    isDarkMode = isDarkMode,
+                    onDarkModeToggle = onDarkModeToggle
+                )
             }
 
             composable("help") {

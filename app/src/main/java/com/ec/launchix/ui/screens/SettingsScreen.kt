@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -17,11 +18,26 @@ import androidx.navigation.NavController
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    userName: String,
+    userEmail: String,
+    userPhone: String,
+    onUserInfoChange: (name: String, email: String, phone: String) -> Unit,
+    isDarkMode: Boolean = false,
+    onDarkModeToggle: (Boolean) -> Unit = {}
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var locationEnabled by remember { mutableStateOf(false) }
-    var darkModeEnabled by remember { mutableStateOf(false) }
+
+    var showPersonalInfoDialog by remember { mutableStateOf(false) }
+    var showAddressDialog by remember { mutableStateOf(false) }
+    var showPaymentDialog by remember { mutableStateOf(false) }
+    var showContactDialog by remember { mutableStateOf(false) }
+    var showFeedbackDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -31,7 +47,11 @@ fun SettingsScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     ) { paddingValues ->
@@ -41,54 +61,51 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Sección de Cuenta
             SettingsSection(title = "Cuenta") {
                 SettingsItem(
                     icon = Icons.Default.Person,
                     title = "Información Personal",
-                    subtitle = "Editar nombre, email y teléfono",
-                    onClick = { }
+                    subtitle = userName,
+                    onClick = { showPersonalInfoDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.LocationOn,
                     title = "Direcciones",
                     subtitle = "Gestionar direcciones de entrega",
-                    onClick = { }
+                    onClick = { showAddressDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.CreditCard,
                     title = "Métodos de Pago",
                     subtitle = "Tarjetas y opciones de pago",
-                    onClick = { }
+                    onClick = { showPaymentDialog = true }
                 )
             }
 
-            // Sección de Preferencias
             SettingsSection(title = "Preferencias") {
                 SettingsSwitchItem(
                     icon = Icons.Default.Notifications,
                     title = "Notificaciones Push",
-                    subtitle = "Recibir notificaciones de pedidos y ofertas",
+                    subtitle = if (notificationsEnabled) "Activadas" else "Desactivadas",
                     checked = notificationsEnabled,
                     onCheckedChange = { notificationsEnabled = it }
                 )
                 SettingsSwitchItem(
                     icon = Icons.Default.LocationOn,
                     title = "Ubicación",
-                    subtitle = "Permitir acceso a la ubicación",
+                    subtitle = if (locationEnabled) "Acceso permitido" else "Acceso denegado",
                     checked = locationEnabled,
                     onCheckedChange = { locationEnabled = it }
                 )
                 SettingsSwitchItem(
                     icon = Icons.Default.DarkMode,
                     title = "Modo Oscuro",
-                    subtitle = "Cambiar apariencia de la app",
-                    checked = darkModeEnabled,
-                    onCheckedChange = { darkModeEnabled = it }
+                    subtitle = if (isDarkMode) "Tema oscuro" else "Tema claro",
+                    checked = isDarkMode,
+                    onCheckedChange = onDarkModeToggle
                 )
             }
 
-            // Sección de Pedidos
             SettingsSection(title = "Pedidos") {
                 SettingsItem(
                     icon = Icons.Default.History,
@@ -104,7 +121,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Sección de Soporte
             SettingsSection(title = "Soporte") {
                 SettingsItem(
                     icon = Icons.Default.Help,
@@ -116,45 +132,41 @@ fun SettingsScreen(
                     icon = Icons.Default.ContactSupport,
                     title = "Contactar Soporte",
                     subtitle = "Chatea con nuestro equipo",
-                    onClick = { }
+                    onClick = { showContactDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Feedback,
                     title = "Enviar Comentarios",
                     subtitle = "Ayúdanos a mejorar la app",
-                    onClick = { }
+                    onClick = { showFeedbackDialog = true }
                 )
             }
 
-            // Sección de Información
             SettingsSection(title = "Información") {
                 SettingsItem(
                     icon = Icons.Default.Info,
                     title = "Acerca de",
                     subtitle = "Versión 1.0.0",
-                    onClick = { }
+                    onClick = { showAboutDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Description,
                     title = "Términos y Condiciones",
                     subtitle = "Leer términos de servicio",
-                    onClick = { }
+                    onClick = { showTermsDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Security,
                     title = "Política de Privacidad",
                     subtitle = "Cómo manejamos tus datos",
-                    onClick = { }
+                    onClick = { showPrivacyDialog = true }
                 )
             }
 
-            // Botón de cerrar sesión
             Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedButton(
-                onClick = {
-                    // Implementar lógica de cierre de sesión
-                },
+                onClick = { showLogoutDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -173,6 +185,93 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (showPersonalInfoDialog) {
+        var tempName by rememberSaveable { mutableStateOf(userName) }
+        var tempEmail by rememberSaveable { mutableStateOf(userEmail) }
+        var tempPhone by rememberSaveable { mutableStateOf(userPhone) }
+
+        LaunchedEffect(userName, userEmail, userPhone) {
+            tempName = userName
+            tempEmail = userEmail
+            tempPhone = userPhone
+        }
+
+        AlertDialog(
+            onDismissRequest = { showPersonalInfoDialog = false },
+            title = { Text("Información Personal") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = tempName,
+                        onValueChange = { tempName = it },
+                        label = { Text("Nombre completo") },
+                        leadingIcon = { Icon(Icons.Default.Person, null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = tempEmail,
+                        onValueChange = { tempEmail = it },
+                        label = { Text("Email") },
+                        leadingIcon = { Icon(Icons.Default.Email, null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = tempPhone,
+                        onValueChange = { tempPhone = it },
+                        label = { Text("Teléfono") },
+                        leadingIcon = { Icon(Icons.Default.Phone, null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onUserInfoChange(tempName, tempEmail, tempPhone)
+                    showPersonalInfoDialog = false
+                }) {
+                    Text("Guardar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPersonalInfoDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            icon = { Icon(Icons.Default.ExitToApp, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Cerrar Sesión") },
+            text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        navController.navigate("profile") {
+                            popUpTo("profile") { inclusive = true }
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Cerrar Sesión")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 

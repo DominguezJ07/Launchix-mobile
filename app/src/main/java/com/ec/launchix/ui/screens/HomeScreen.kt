@@ -20,14 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.ec.launchix.data.SampleData
 import com.ec.launchix.ui.theme.LaunchixTheme
 
-// Clases de datos para notificaciones
+// Data classes
 data class NotificationItem(
     val id: String,
     val title: String,
@@ -48,454 +52,178 @@ fun HomeScreen(
     onServiceClick: (String) -> Unit = {},
     onCategoryClick: (String) -> Unit = {},
     onNavigateToProducts: () -> Unit = {},
-    onNavigateToServices: () -> Unit = {} // ✅ NUEVO: Parámetro para navegar a servicios
+    onNavigateToServices: () -> Unit = {}
 ) {
-    // Estados para el modal de detalles de productos
+    // Estados consolidados
     var showProductDetail by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf<com.ec.launchix.data.Product?>(null) }
-    var favoriteProducts by remember { mutableStateOf(setOf<String>()) }
-
-    // Estados para el modal de detalles de servicios
     var showServiceDetail by remember { mutableStateOf(false) }
     var selectedService by remember { mutableStateOf<com.ec.launchix.data.Service?>(null) }
-
-    // Estado para mostrar todas las categorías
+    var favoriteProducts by remember { mutableStateOf(setOf<String>()) }
     var showAllCategories by remember { mutableStateOf(false) }
-
-    // Estados para notificaciones
     var showNotifications by remember { mutableStateOf(false) }
     var notificationCount by remember { mutableStateOf(3) }
-
-    // Estados para búsqueda
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     var searchHistory by remember { mutableStateOf(listOf("iPhone", "Reparación", "AirPods")) }
 
-    // Filtrar productos y servicios basado en la búsqueda
+    // Filtros y sugerencias
     val filteredProducts = remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            SampleData.sampleProducts
-        } else {
-            SampleData.sampleProducts.filter { product ->
-                product.name.contains(searchQuery, ignoreCase = true) ||
-                        product.description.contains(searchQuery, ignoreCase = true)
-            }
+        if (searchQuery.isBlank()) SampleData.sampleProducts
+        else SampleData.sampleProducts.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+                    it.description.contains(searchQuery, ignoreCase = true)
         }
     }
 
     val filteredServices = remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            SampleData.sampleServices
-        } else {
-            SampleData.sampleServices.filter { service ->
-                service.name.contains(searchQuery, ignoreCase = true) ||
-                        service.description.contains(searchQuery, ignoreCase = true)
-            }
+        if (searchQuery.isBlank()) SampleData.sampleServices
+        else SampleData.sampleServices.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+                    it.description.contains(searchQuery, ignoreCase = true)
         }
     }
 
-    // Sugerencias de búsqueda
     val searchSuggestions = remember(searchQuery) {
         if (searchQuery.isBlank()) {
             listOf("iPhone 14", "Reparación pantalla", "AirPods Pro", "MacBook", "Samsung Galaxy", "Xiaomi")
         } else {
-            val productSuggestions = SampleData.sampleProducts
-                .filter { it.name.contains(searchQuery, ignoreCase = true) }
-                .map { it.name }
-            val serviceSuggestions = SampleData.sampleServices
-                .filter { it.name.contains(searchQuery, ignoreCase = true) }
-                .map { it.name }
-            (productSuggestions + serviceSuggestions).distinct().take(6)
+            (filteredProducts.map { it.name } + filteredServices.map { it.name }).distinct().take(6)
         }
     }
 
-    // Datos de ejemplo para notificaciones
+    // Datos de notificaciones
     val sampleNotifications = remember {
         listOf(
-            NotificationItem(
-                id = "1",
-                title = "¡Nueva oferta disponible!",
-                message = "AirPods Pro 2 con 20% de descuento por tiempo limitado",
-                time = "Hace 2 min",
-                type = NotificationType.OFFER,
-                isRead = false
-            ),
-            NotificationItem(
-                id = "2",
-                title = "Tu pedido ha sido enviado",
-                message = "Tu iPhone 14 Pro está en camino. Llegará mañana entre 2-4 PM",
-                time = "Hace 1 hora",
-                type = NotificationType.ORDER,
-                isRead = false
-            ),
-            NotificationItem(
-                id = "3",
-                title = "Servicio completado",
-                message = "La reparación de tu MacBook ha sido completada exitosamente",
-                time = "Hace 3 horas",
-                type = NotificationType.SERVICE,
-                isRead = true
-            ),
-            NotificationItem(
-                id = "4",
-                title = "Recordatorio de pago",
-                message = "Tienes un pago pendiente por $150.00. Completa tu compra ahora",
-                time = "Hace 1 día",
-                type = NotificationType.PAYMENT,
-                isRead = true
-            )
+            NotificationItem("1", "¡Nueva oferta disponible!", "AirPods Pro 2 con 20% de descuento por tiempo limitado",
+                "Hace 2 min", NotificationType.OFFER, false),
+            NotificationItem("2", "Tu pedido ha sido enviado", "Tu iPhone 14 Pro está en camino. Llegará mañana entre 2-4 PM",
+                "Hace 1 hora", NotificationType.ORDER, false),
+            NotificationItem("3", "Servicio completado", "La reparación de tu MacBook ha sido completada exitosamente",
+                "Hace 3 horas", NotificationType.SERVICE, true),
+            NotificationItem("4", "Recordatorio de pago", "Tienes un pago pendiente por $150.00. Completa tu compra ahora",
+                "Hace 1 día", NotificationType.PAYMENT, true)
         )
     }
 
-    // Inicializar favoritos
     LaunchedEffect(Unit) {
-        favoriteProducts = SampleData.sampleProducts
-            .filter { it.isFavorite }
-            .map { it.id }
-            .toSet()
+        favoriteProducts = SampleData.sampleProducts.filter { it.isFavorite }.map { it.id }.toSet()
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
-        // Header con saludo y búsqueda
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            shadowElevation = 4.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "¡Hola! Bienvenido de vuelta",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "Launchix",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Row {
-                        // Botón de notificaciones con badge
-                        Box {
-                            IconButton(
-                                onClick = { showNotifications = true }
-                            ) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    contentDescription = "Notificaciones",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
-
-                            // Badge con número de notificaciones
-                            if (notificationCount > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.error,
-                                            CircleShape
-                                        )
-                                        .align(Alignment.TopEnd),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
-                                        color = MaterialTheme.colorScheme.onError,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-
-                        IconButton(
-                            onClick = { /* TODO: Carrito */ }
-                        ) {
-                            Icon(
-                                Icons.Default.ShoppingCart,
-                                contentDescription = "Carrito",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
+        // Header
+        HeaderSection(
+            notificationCount = notificationCount,
+            searchQuery = searchQuery,
+            isSearchActive = isSearchActive,
+            searchHistory = searchHistory,
+            searchSuggestions = searchSuggestions,
+            filteredProducts = filteredProducts,
+            filteredServices = filteredServices,
+            favoriteProducts = favoriteProducts,
+            onNotificationsClick = { showNotifications = true },
+            onQueryChange = { searchQuery = it },
+            onSearchSubmit = { query ->
+                if (query.isNotBlank() && !searchHistory.contains(query)) {
+                    searchHistory = listOf(query) + searchHistory.take(4)
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Barra de búsqueda
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = { newQuery ->
-                        searchQuery = newQuery
-                    },
-                    onSearch = { query ->
-                        // Agregar al historial si no está vacío y no existe
-                        if (query.isNotBlank() && !searchHistory.contains(query)) {
-                            searchHistory = listOf(query) + searchHistory.take(4)
-                        }
-                        isSearchActive = false
-                    },
-                    active = isSearchActive,
-                    onActiveChange = { active ->
-                        isSearchActive = active
-                    },
-                    placeholder = { Text("Buscar productos y servicios...") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Buscar"
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    searchQuery = ""
-                                }
-                            ) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = "Limpiar búsqueda"
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Contenido del SearchBar expandido
-                    SearchContent(
-                        searchQuery = searchQuery,
-                        searchHistory = searchHistory,
-                        searchSuggestions = searchSuggestions,
-                        filteredProducts = filteredProducts,
-                        filteredServices = filteredServices,
-                        onQueryChange = { query ->
-                            searchQuery = query
-                        },
-                        onSearchSubmit = { query ->
-                            if (query.isNotBlank() && !searchHistory.contains(query)) {
-                                searchHistory = listOf(query) + searchHistory.take(4)
-                            }
-                            isSearchActive = false
-                        },
-                        onProductClick = { product ->
-                            selectedProduct = product
-                            showProductDetail = true
-                            isSearchActive = false
-                        },
-                        onServiceClick = { service ->
-                            selectedService = service
-                            showServiceDetail = true
-                            isSearchActive = false
-                        },
-                        favoriteProducts = favoriteProducts,
-                        onFavoriteToggle = { productId ->
-                            favoriteProducts = if (favoriteProducts.contains(productId)) {
-                                favoriteProducts - productId
-                            } else {
-                                favoriteProducts + productId
-                            }
-                        }
-                    )
-                }
+                isSearchActive = false
+            },
+            onActiveChange = { isSearchActive = it },
+            onProductClick = { product ->
+                selectedProduct = product
+                showProductDetail = true
+                isSearchActive = false
+            },
+            onServiceClick = { service ->
+                selectedService = service
+                showServiceDetail = true
+                isSearchActive = false
+            },
+            onFavoriteToggle = { productId ->
+                favoriteProducts = if (favoriteProducts.contains(productId)) {
+                    favoriteProducts - productId
+                } else favoriteProducts + productId
             }
-        }
+        )
 
+        // Contenido principal
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Sección de categorías
+            // Categorías
             item {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Categorías",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
+                CategoriesSection(
+                    showAll = showAllCategories,
+                    onToggleShowAll = { showAllCategories = !showAllCategories },
+                    onCategoryClick = onCategoryClick
+                )
+            }
+
+            // Productos destacados
+            item {
+                SectionHeader(title = "Productos Destacados", onSeeAllClick = onNavigateToProducts)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(SampleData.sampleProducts.take(5)) { product ->
+                        ProductCard(
+                            product = product,
+                            isFavorite = favoriteProducts.contains(product.id),
+                            onFavoriteToggle = { id ->
+                                favoriteProducts = if (favoriteProducts.contains(id)) {
+                                    favoriteProducts - id
+                                } else favoriteProducts + id
+                            },
+                            onClick = {
+                                selectedProduct = product
+                                showProductDetail = true
+                            }
                         )
-                        TextButton(onClick = { showAllCategories = true }) {
-                            Text("Ver todas")
-                        }
-                    }
-
-                    if (showAllCategories) {
-                        // Mostrar todas las categorías en grid
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp),
-                            modifier = Modifier.height(
-                                // Calcular altura dinámica basada en el número de categorías
-                                ((SampleData.sampleCategories.size + 2) / 3 * 120).dp
-                            )
-                        ) {
-                            items(SampleData.sampleCategories) { category ->
-                                CategoryCard(
-                                    category = category,
-                                    onClick = {
-                                        onCategoryClick(category.name)
-                                    }
-                                )
-                            }
-                        }
-
-                        // Botón para colapsar
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            TextButton(onClick = { showAllCategories = false }) {
-                                Icon(
-                                    Icons.Default.ExpandLess,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Ver menos")
-                            }
-                        }
-                    } else {
-                        // Mostrar solo las primeras 6 categorías
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(15.dp),
-                            contentPadding = PaddingValues(vertical = 7.dp)
-                        ) {
-                            items(SampleData.sampleCategories.take(6)) { category ->
-                                CategoryCard(
-                                    category = category,
-                                    onClick = {
-                                        onCategoryClick(category.name)
-                                    }
-                                )
-                            }
-                        }
                     }
                 }
             }
 
-            // Sección Productos Destacados
+            // Servicios destacados
             item {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Productos Destacados",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
+                SectionHeader(title = "Servicios Destacados", onSeeAllClick = onNavigateToServices)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(SampleData.sampleServices.take(5)) { service ->
+                        ServiceCard(
+                            service = service,
+                            onClick = {
+                                selectedService = service
+                                showServiceDetail = true
+                            }
                         )
-                        TextButton(onClick = onNavigateToProducts) {
-                            Text("Ver todos")
-                        }
-                    }
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(SampleData.sampleProducts.take(5)) { product ->
-                            ProductCard(
-                                product = product,
-                                isFavorite = favoriteProducts.contains(product.id),
-                                onFavoriteToggle = { productId ->
-                                    favoriteProducts = if (favoriteProducts.contains(productId)) {
-                                        favoriteProducts - productId
-                                    } else {
-                                        favoriteProducts + productId
-                                    }
-                                },
-                                onClick = {
-                                    selectedProduct = product
-                                    showProductDetail = true
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Sección Servicios Destacados
-            item {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Servicios Destacados",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        // ✅ MODIFICADO: Usar onNavigateToServices en lugar del comentario
-                        TextButton(onClick = onNavigateToServices) {
-                            Text("Ver todos")
-                        }
-                    }
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(SampleData.sampleServices.take(5)) { service ->
-                            ServiceCard(
-                                service = service,
-                                onClick = {
-                                    selectedService = service
-                                    showServiceDetail = true
-                                }
-                            )
-                        }
                     }
                 }
             }
         }
     }
 
-    // Modal de detalles del producto
+    // Modales
     if (showProductDetail && selectedProduct != null) {
         ProductDetailModal(
             product = selectedProduct!!,
             isFavorite = favoriteProducts.contains(selectedProduct!!.id),
-            onFavoriteToggle = { productId ->
-                favoriteProducts = if (favoriteProducts.contains(productId)) {
-                    favoriteProducts - productId
-                } else {
-                    favoriteProducts + productId
-                }
+            onFavoriteToggle = { id ->
+                favoriteProducts = if (favoriteProducts.contains(id)) {
+                    favoriteProducts - id
+                } else favoriteProducts + id
             },
             onDismiss = { showProductDetail = false }
         )
     }
 
-    // Modal de detalles del servicio
     if (showServiceDetail && selectedService != null) {
         ServiceDetailModal(
             service = selectedService!!,
@@ -503,57 +231,194 @@ fun HomeScreen(
         )
     }
 
-    // Modal de notificaciones
     if (showNotifications) {
         NotificationsModal(
             notifications = sampleNotifications,
             onDismiss = { showNotifications = false },
-            onNotificationRead = { notificationId ->
-                // Reducir el contador solo si la notificación no estaba leída
-                val notification = sampleNotifications.find { it.id == notificationId }
+            onNotificationRead = { id ->
+                val notification = sampleNotifications.find { it.id == id }
                 if (notification?.isRead == false) {
                     notificationCount = maxOf(0, notificationCount - 1)
                 }
             },
-            onMarkAllAsRead = {
-                notificationCount = 0
+            onMarkAllAsRead = { notificationCount = 0 }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HeaderSection(
+    notificationCount: Int,
+    searchQuery: String,
+    isSearchActive: Boolean,
+    searchHistory: List<String>,
+    searchSuggestions: List<String>,
+    filteredProducts: List<com.ec.launchix.data.Product>,
+    filteredServices: List<com.ec.launchix.data.Service>,
+    favoriteProducts: Set<String>,
+    onNotificationsClick: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onSearchSubmit: (String) -> Unit,
+    onActiveChange: (Boolean) -> Unit,
+    onProductClick: (com.ec.launchix.data.Product) -> Unit,
+    onServiceClick: (com.ec.launchix.data.Service) -> Unit,
+    onFavoriteToggle: (String) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.primary,
+        shadowElevation = 4.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("¡Hola! Bienvenido de vuelta", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
+                    Text("Launchix", color = MaterialTheme.colorScheme.onPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Row {
+                    Box {
+                        IconButton(onClick = onNotificationsClick) {
+                            Icon(Icons.Default.Notifications, "Notificaciones", tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        if (notificationCount > 0) {
+                            Badge(
+                                count = notificationCount,
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            )
+                        }
+                    }
+                    IconButton(onClick = { /* Carrito */ }) {
+                        Icon(Icons.Default.ShoppingCart, "Carrito", tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = onQueryChange,
+                onSearch = onSearchSubmit,
+                active = isSearchActive,
+                onActiveChange = onActiveChange,
+                placeholder = { Text("Buscar productos y servicios...") },
+                leadingIcon = { Icon(Icons.Default.Search, "Buscar") },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(Icons.Default.Clear, "Limpiar búsqueda")
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SearchContent(
+                    searchQuery = searchQuery,
+                    searchHistory = searchHistory,
+                    searchSuggestions = searchSuggestions,
+                    filteredProducts = filteredProducts,
+                    filteredServices = filteredServices,
+                    favoriteProducts = favoriteProducts,
+                    onQueryChange = onQueryChange,
+                    onSearchSubmit = onSearchSubmit,
+                    onProductClick = onProductClick,
+                    onServiceClick = onServiceClick,
+                    onFavoriteToggle = onFavoriteToggle
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Badge(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(20.dp)
+            .background(MaterialTheme.colorScheme.error, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (count > 99) "99+" else count.toString(),
+            color = MaterialTheme.colorScheme.onError,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 @Composable
-fun CategoryCard(
-    category: com.ec.launchix.data.Category,
-    onClick: () -> Unit
+private fun CategoriesSection(
+    showAll: Boolean,
+    onToggleShowAll: () -> Unit,
+    onCategoryClick: (String) -> Unit
 ) {
+    Column {
+        SectionHeader(title = "Categorías", onSeeAllClick = { onToggleShowAll() })
+
+        if (showAll) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                modifier = Modifier.height(((SampleData.sampleCategories.size + 2) / 3 * 120).dp)
+            ) {
+                items(SampleData.sampleCategories) { category ->
+                    CategoryCard(category = category, onClick = { onCategoryClick(category.name) })
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                TextButton(onClick = { onToggleShowAll() }) {
+                    Icon(Icons.Default.ExpandLess, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ver menos")
+                }
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(15.dp),
+                contentPadding = PaddingValues(vertical = 7.dp)
+            ) {
+                items(SampleData.sampleCategories.take(6)) { category ->
+                    CategoryCard(category = category, onClick = { onCategoryClick(category.name) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, onSeeAllClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        TextButton(onClick = onSeeAllClick) { Text("Ver todos") }
+    }
+}
+
+@Composable
+fun CategoryCard(category: com.ec.launchix.data.Category, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .width(100.dp)
-            .clickable { onClick() },
+        modifier = Modifier.width(100.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = category.icon,
-                fontSize = 24.sp
-            )
+        Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(category.icon, fontSize = 24.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = category.name,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(category.name, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -565,96 +430,51 @@ fun SearchContent(
     searchSuggestions: List<String>,
     filteredProducts: List<com.ec.launchix.data.Product>,
     filteredServices: List<com.ec.launchix.data.Service>,
+    favoriteProducts: Set<String>,
     onQueryChange: (String) -> Unit,
     onSearchSubmit: (String) -> Unit,
     onProductClick: (com.ec.launchix.data.Product) -> Unit,
     onServiceClick: (com.ec.launchix.data.Service) -> Unit,
-    favoriteProducts: Set<String>,
     onFavoriteToggle: (String) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 500.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(16.dp)
     ) {
-        // Historial de búsqueda
+        // Historial
         if (searchQuery.isEmpty() && searchHistory.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Búsquedas recientes",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            items(searchHistory) { historyItem ->
-                SearchHistoryItem(
-                    text = historyItem,
-                    onClick = {
-                        onQueryChange(historyItem)
-                        onSearchSubmit(historyItem)
-                    }
-                )
+            item { Text("Búsquedas recientes", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
+            items(searchHistory) { item ->
+                SearchListItem(text = item, icon = Icons.Default.History, onClick = {
+                    onQueryChange(item)
+                    onSearchSubmit(item)
+                })
             }
         }
 
-        // Sugerencias de búsqueda
+        // Sugerencias
         if (searchQuery.isNotEmpty() && searchSuggestions.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Sugerencias",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-
+            item { Text("Sugerencias", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp)) }
             items(searchSuggestions) { suggestion ->
-                SearchSuggestionItem(
-                    text = suggestion,
-                    query = searchQuery,
-                    onClick = {
-                        onQueryChange(suggestion)
-                        onSearchSubmit(suggestion)
-                    }
-                )
+                SearchListItem(text = suggestion, icon = Icons.Default.Search, onClick = {
+                    onQueryChange(suggestion)
+                    onSearchSubmit(suggestion)
+                })
             }
         }
 
         // Resultados de productos
         if (searchQuery.isNotEmpty() && filteredProducts.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Productos (${filteredProducts.size})",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
-
+            item { Text("Productos (${filteredProducts.size})", fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp, modifier = Modifier.padding(top = 16.dp)) }
             items(filteredProducts.take(3)) { product ->
-                SearchResultProductItem(
-                    product = product,
-                    isFavorite = favoriteProducts.contains(product.id),
-                    onFavoriteToggle = onFavoriteToggle,
-                    onClick = { onProductClick(product) },
-                    searchQuery = searchQuery
-                )
+                SearchResultProductItem(product, favoriteProducts.contains(product.id),
+                    onFavoriteToggle, { onProductClick(product) })
             }
-
             if (filteredProducts.size > 3) {
                 item {
-                    TextButton(
-                        onClick = {
-                            onSearchSubmit(searchQuery)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    TextButton(onClick = { onSearchSubmit(searchQuery) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Ver todos los ${filteredProducts.size} productos")
                     }
                 }
@@ -663,32 +483,14 @@ fun SearchContent(
 
         // Resultados de servicios
         if (searchQuery.isNotEmpty() && filteredServices.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Servicios (${filteredServices.size})",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            }
-
+            item { Text("Servicios (${filteredServices.size})", fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp, modifier = Modifier.padding(top = 16.dp)) }
             items(filteredServices.take(3)) { service ->
-                SearchResultServiceItem(
-                    service = service,
-                    onClick = { onServiceClick(service) },
-                    searchQuery = searchQuery
-                )
+                SearchResultServiceItem(service, { onServiceClick(service) })
             }
-
             if (filteredServices.size > 3) {
                 item {
-                    TextButton(
-                        onClick = {
-                            onSearchSubmit(searchQuery)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    TextButton(onClick = { onSearchSubmit(searchQuery) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Ver todos los ${filteredServices.size} servicios")
                     }
                 }
@@ -698,102 +500,34 @@ fun SearchContent(
         // Estado vacío
         if (searchQuery.isNotEmpty() && filteredProducts.isEmpty() && filteredServices.isEmpty()) {
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Default.SearchOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "No se encontraron resultados",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
-                    Text(
-                        text = "Intenta con otros términos de búsqueda",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
+                EmptySearchState()
             }
         }
     }
 }
 
 @Composable
-fun SearchHistoryItem(
-    text: String,
-    onClick: () -> Unit
-) {
+private fun SearchListItem(text: String, icon: ImageVector, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            Icons.Default.History,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = text,
-            modifier = Modifier
-                .padding(start = 16.dp)
-                .weight(1f),
-            fontSize = 14.sp
-        )
-        Icon(
-            Icons.Default.NorthWest,
-            contentDescription = "Usar búsqueda",
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text, modifier = Modifier.padding(start = 16.dp).weight(1f), fontSize = 14.sp)
+        Icon(Icons.Default.NorthWest, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-fun SearchSuggestionItem(
-    text: String,
-    query: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun EmptySearchState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            Icons.Default.Search,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = text,
-            modifier = Modifier
-                .padding(start = 16.dp)
-                .weight(1f),
-            fontSize = 14.sp
-        )
-        Icon(
-            Icons.Default.NorthWest,
-            contentDescription = "Buscar",
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("No se encontraron resultados", fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 16.dp))
+        Text("Intenta con otros términos de búsqueda", fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -802,83 +536,38 @@ fun SearchResultProductItem(
     product: com.ec.launchix.data.Product,
     isFavorite: Boolean,
     onFavoriteToggle: (String) -> Unit,
-    onClick: () -> Unit,
-    searchQuery: String
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Imagen placeholder
-            Box(
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Imagen del producto
+            AsyncImage(
+                model = product.imageUrl,
+                contentDescription = product.name,
                 modifier = Modifier
                     .size(60.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.ShoppingBag,
-                    contentDescription = null,
-                    modifier = Modifier.size(30.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
 
-            Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f)
-            ) {
-                Text(
-                    text = product.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = Color(0xFFFFC107)
-                    )
-                    Text(
-                        text = "${product.rating} (${product.reviewCount})",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
+            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+                Text(product.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Icon(Icons.Default.Star, null, modifier = Modifier.size(12.dp), tint = Color(0xFFFFC107))
+                    Text("${product.rating} (${product.reviewCount})", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
                 }
-
-                Text(
-                    text = "${product.price}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                Text("$${product.price}", fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
             }
 
-            IconButton(
-                onClick = { onFavoriteToggle(product.id) }
-            ) {
+            IconButton(onClick = { onFavoriteToggle(product.id) }) {
                 Icon(
                     if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
+                    if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
                     tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -887,84 +576,34 @@ fun SearchResultProductItem(
 }
 
 @Composable
-fun SearchResultServiceItem(
-    service: com.ec.launchix.data.Service,
-    onClick: () -> Unit,
-    searchQuery: String
-) {
+fun SearchResultServiceItem(service: com.ec.launchix.data.Service, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Imagen placeholder
-            Box(
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Imagen del servicio
+            AsyncImage(
+                model = service.imageUrl,
+                contentDescription = service.name,
                 modifier = Modifier
                     .size(60.dp)
-                    .background(
-                        MaterialTheme.colorScheme.secondaryContainer,
-                        RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Build,
-                    contentDescription = null,
-                    modifier = Modifier.size(30.dp),
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f)
-            ) {
-                Text(
-                    text = service.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = Color(0xFFFFC107)
-                    )
-                    Text(
-                        text = "${service.rating} (${service.reviewCount})",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-
-                Text(
-                    text = "${service.price}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-            Icon(
-                Icons.Default.ArrowForward,
-                contentDescription = "Ver servicio",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
             )
+
+            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+                Text(service.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Icon(Icons.Default.Star, null, modifier = Modifier.size(12.dp), tint = Color(0xFFFFC107))
+                    Text("${service.rating} (${service.reviewCount})", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
+                }
+                Text("$${service.price}", fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+            }
+
+            Icon(Icons.Default.ArrowForward, "Ver servicio", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -977,126 +616,67 @@ fun ProductCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .width(180.dp)
-            .clickable { onClick() },
+        modifier = Modifier.width(180.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            // Imagen del producto (placeholder)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.fillMaxWidth().height(120.dp)
             ) {
-                Icon(
-                    Icons.Default.ShoppingBag,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                // Imagen del producto
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = product.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
 
-                // Badge de oferta
                 if (product.isOnSale) {
                     Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .background(
-                                MaterialTheme.colorScheme.error,
-                                RoundedCornerShape(12.dp)
-                            )
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                            .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "OFERTA",
-                            color = MaterialTheme.colorScheme.onError,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("OFERTA", color = MaterialTheme.colorScheme.onError, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                // Botón de favorito
                 onFavoriteToggle?.let { toggle ->
                     IconButton(
                         onClick = { toggle(product.id) },
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp)
+                        modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
+                            .background(Color.White.copy(alpha = 0.8f), CircleShape)
                     ) {
                         Icon(
                             if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
-                            tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onPrimaryContainer
+                            if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
+                            tint = if (isFavorite) Color.Red else Color.Gray
                         )
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Text(
-                    text = product.name,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(product.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color(0xFFFFC107)
-                    )
-                    Text(
-                        text = "${product.rating}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = " (${product.reviewCount})",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Star, null, modifier = Modifier.size(14.dp), tint = Color(0xFFFFC107))
+                    Text("${product.rating} (${product.reviewCount})", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$${product.price}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    product.originalPrice?.let { originalPrice ->
-                        if (originalPrice > product.price) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("$${product.price}", fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary)
+                    product.originalPrice?.let { original ->
+                        if (original > product.price) {
                             Text(
-                                text = "$${originalPrice}",
+                                "$${original}",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp)
+                                modifier = Modifier.padding(start = 4.dp),
+                                textDecoration = TextDecoration.LineThrough
                             )
                         }
                     }
@@ -1107,124 +687,59 @@ fun ProductCard(
 }
 
 @Composable
-fun ServiceCard(
-    service: com.ec.launchix.data.Service,
-    onClick: () -> Unit
-) {
+fun ServiceCard(service: com.ec.launchix.data.Service, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .width(180.dp)
-            .clickable { onClick() },
+        modifier = Modifier.width(180.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            // Imagen del servicio (placeholder)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.secondaryContainer,
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.fillMaxWidth().height(120.dp)
             ) {
-                Icon(
-                    Icons.Default.Build,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                // Imagen del servicio
+                AsyncImage(
+                    model = service.imageUrl,
+                    contentDescription = service.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
 
-                // Badge de oferta
                 if (service.isOnSale) {
                     Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .background(
-                                MaterialTheme.colorScheme.error,
-                                RoundedCornerShape(12.dp)
-                            )
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                            .background(MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "OFERTA",
-                            color = MaterialTheme.colorScheme.onError,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("OFERTA", color = MaterialTheme.colorScheme.onError, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Text(
-                    text = service.name,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(service.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color(0xFFFFC107)
-                    )
-                    Text(
-                        text = "${service.rating}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = " (${service.reviewCount})",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Star, null, modifier = Modifier.size(14.dp), tint = Color(0xFFFFC107))
+                    Text("${service.rating} (${service.reviewCount})", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-
                 if (service.duration.isNotEmpty()) {
-                    Text(
-                        text = "Duración: ${service.duration}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
+                    Text("Duración: ${service.duration}", fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$${service.price}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    service.originalPrice?.let { originalPrice ->
-                        if (originalPrice > service.price) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${service.price}", fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary)
+                    service.originalPrice?.let { original ->
+                        if (original > service.price) {
                             Text(
-                                text = "$${originalPrice}",
+                                "${original}",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp)
+                                modifier = Modifier.padding(start = 4.dp),
+                                textDecoration = TextDecoration.LineThrough
                             )
                         }
                     }
@@ -1235,199 +750,210 @@ fun ServiceCard(
 }
 
 @Composable
-fun ServiceDetailModal(
-    service: com.ec.launchix.data.Service,
+fun ProductDetailModal(
+    product: com.ec.launchix.data.Product,
+    isFavorite: Boolean,
+    onFavoriteToggle: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = service.name,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(product.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { onFavoriteToggle(product.id) }) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
+                        tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         },
         text = {
             Column {
-                // Rating
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFFFFC107)
-                    )
-                    Text(
-                        text = "${service.rating} (${service.reviewCount} reseñas)",
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                    if (service.isOnSale) {
+                // Imagen del producto
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = product.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Icon(Icons.Default.Star, null, modifier = Modifier.size(16.dp), tint = Color(0xFFFFC107))
+                    Text("${product.rating} (${product.reviewCount} reseñas)", fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp))
+                    if (product.isOnSale) {
                         Box(
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .background(Color(0xFF4CAF50), RoundedCornerShape(4.dp))
+                            modifier = Modifier.padding(start = 8.dp)
+                                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
+                            Text("OFERTA", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Text("${product.price}", fontSize = 24.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary)
+                    product.originalPrice?.let { original ->
+                        if (original > product.price) {
                             Text(
-                                text = "Disponible",
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                "${original}",
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 8.dp),
+                                textDecoration = TextDecoration.LineThrough
                             )
                         }
                     }
                 }
 
-                // Precio
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = "$${service.price}",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = " Precio fijo",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
+                Text("Categoría: ${product.category}", fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
 
-                // Duración y domicilio
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.AccessTime,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "1 - 2 horas",
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 4.dp, end = 16.dp)
-                    )
-                    Icon(
-                        Icons.Default.Home,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "A domicilio",
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-
-                // Proveedor
+                Text("Descripción", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 8.dp))
                 Text(
-                    text = "Proveedor del servicio",
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "TP",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Column(
-                        modifier = Modifier.padding(start = 12.dp)
-                    ) {
-                        Text(
-                            text = "TechFix Pro",
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "5 años de experiencia",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Servicios completados:",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "1250",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = "Tiempo de respuesta:",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "30 minutos",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Servicio profesional de reparación de smartphones. Manejo amplia variedad de modelos: iPhone, Samsung, Xiaomi, cámaras, altavoces y más. Técnicos certificados con garantía de 6 meses en todas las reparaciones.",
-                    fontSize = 12.sp,
+                    product.description,
+                    fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (product.tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        product.tags.take(3).forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(tag, fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(16.dp))
+                Text("Agregar al carrito", modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+    )
+}
+
+@Composable
+fun ServiceDetailModal(service: com.ec.launchix.data.Service, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(service.name, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                // Imagen del servicio
+                AsyncImage(
+                    model = service.imageUrl,
+                    contentDescription = service.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Icon(Icons.Default.Star, null, modifier = Modifier.size(16.dp), tint = Color(0xFFFFC107))
+                    Text("${service.rating} (${service.reviewCount} reseñas)", fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp))
+                    if (service.isOnSale) {
+                        Box(
+                            modifier = Modifier.padding(start = 8.dp)
+                                .background(Color(0xFF4CAF50), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text("Disponible", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Text("${service.price}", fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary)
+                    service.originalPrice?.let { original ->
+                        if (original > service.price) {
+                            Text(
+                                "${original}",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 8.dp),
+                                textDecoration = TextDecoration.LineThrough
+                            )
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Icon(Icons.Default.AccessTime, null, modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(service.duration, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp, end = 16.dp))
+                    Icon(Icons.Default.Home, null, modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("A domicilio", fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                }
+
+                Text("Descripción", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    service.description,
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (service.tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        service.tags.take(3).forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(tag, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4CAF50)
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
             ) {
-                Icon(
-                    Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "Reservar servicio",
-                    modifier = Modifier.padding(start = 8.dp)
-                )
+                Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(16.dp))
+                Text("Reservar servicio", modifier = Modifier.padding(start = 8.dp))
             }
-        },
-        dismissButton = null
+        }
     )
 }
 
@@ -1447,18 +973,9 @@ fun NotificationsModal(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Notificaciones",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-                TextButton(
-                    onClick = onMarkAllAsRead
-                ) {
-                    Text(
-                        text = "Marcar todas como leídas",
-                        fontSize = 12.sp
-                    )
+                Text("Notificaciones", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                TextButton(onClick = onMarkAllAsRead) {
+                    Text("Marcar todas como leídas", fontSize = 12.sp)
                 }
             }
         },
@@ -1468,132 +985,83 @@ fun NotificationsModal(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(notifications) { notification ->
-                    NotificationCard(
-                        notification = notification,
-                        onClick = {
-                            onNotificationRead(notification.id)
-                        }
-                    )
+                    NotificationCard(notification = notification, onClick = { onNotificationRead(notification.id) })
                 }
 
                 if (notifications.isEmpty()) {
                     item {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                Icons.Default.NotificationsNone,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "No tienes notificaciones",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 16.dp)
-                            )
+                            Icon(Icons.Default.NotificationsNone, null, modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("No tienes notificaciones", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 16.dp))
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cerrar")
-            }
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
     )
 }
 
 @Composable
-fun NotificationCard(
-    notification: NotificationItem,
-    onClick: () -> Unit
-) {
+fun NotificationCard(notification: NotificationItem, onClick: () -> Unit) {
+    val (icon, iconColor) = when (notification.type) {
+        NotificationType.OFFER -> Icons.Default.LocalOffer to Color(0xFF4CAF50)
+        NotificationType.ORDER -> Icons.Default.LocalShipping to Color(0xFF2196F3)
+        NotificationType.SERVICE -> Icons.Default.Build to Color(0xFF9C27B0)
+        NotificationType.PAYMENT -> Icons.Default.Payment to Color(0xFFFF9800)
+        NotificationType.GENERAL -> Icons.Default.Info to Color(0xFF607D8B)
+    }
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead)
-                MaterialTheme.colorScheme.surface
-            else
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            containerColor = if (notification.isRead) MaterialTheme.colorScheme.surface
+            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            // Icono basado en el tipo de notificación
-            val (icon, iconColor) = when (notification.type) {
-                NotificationType.OFFER -> Icons.Default.LocalOffer to Color(0xFF4CAF50)
-                NotificationType.ORDER -> Icons.Default.LocalShipping to Color(0xFF2196F3)
-                NotificationType.SERVICE -> Icons.Default.Build to Color(0xFF9C27B0)
-                NotificationType.PAYMENT -> Icons.Default.Payment to Color(0xFFFF9800)
-                NotificationType.GENERAL -> Icons.Default.Info to Color(0xFF607D8B)
-            }
-
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(iconColor.copy(alpha = 0.1f), CircleShape),
+                modifier = Modifier.size(40.dp).background(iconColor.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = iconColor
-                )
+                Icon(icon, null, modifier = Modifier.size(20.dp), tint = iconColor)
             }
 
-            Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f)
-            ) {
+            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
-                )                                                                                                                                                                                   {
+                ) {
                     Text(
-                        text = notification.title,
+                        notification.title,
                         fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-
                     if (!notification.isRead) {
                         Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            modifier = Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
                                 .padding(start = 8.dp)
                         )
                     }
                 }
 
                 Text(
-                    text = notification.message,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    modifier = Modifier.padding(top = 4.dp),
-                    
-                    overflow = TextOverflow.Ellipsis
+                    notification.message, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, modifier = Modifier.padding(top = 4.dp), overflow = TextOverflow.Ellipsis
                 )
 
                 Text(
-                    text = notification.time,
-                    fontSize = 11.sp,
+                    notification.time, fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 4.dp)
                 )
