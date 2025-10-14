@@ -3,6 +3,7 @@ package com.ec.launchix.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,6 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,97 +22,115 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreenWithAuth() {
-    // Estado para simular si el usuario está logueado o no
     var isLoggedIn by remember { mutableStateOf(false) }
 
     if (isLoggedIn) {
-        // Mostrar perfil completo cuando está logueado
         ProfileScreenLoggedIn(onLogout = { isLoggedIn = false })
     } else {
-        // Mostrar pantalla de login cuando no está logueado
         ProfileScreenLogin(onLogin = { isLoggedIn = true })
     }
 }
 
 @Composable
 fun ProfileScreenLogin(onLogin: () -> Unit) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFFFC947),
+                        Color(0xFFFFB347)
+                    )
+                )
+            )
     ) {
-        // Icono de usuario
-        Box(
+        Column(
             modifier = Modifier
-                .size(120.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "Usuario",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(60.dp)
-            )
-        }
+            // Icono de usuario con sombra
+            Box(
+                modifier = Modifier
+                    .size(160.dp)
+                    .shadow(16.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Usuario",
+                    tint = Color(0xFFFFC947),
+                    modifier = Modifier.size(90.dp)
+                )
+            }
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-        // Título
-        Text(
-            text = "Inicia sesión",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Subtítulo
-        Text(
-            text = "Accede a tu cuenta para ver tu perfil",
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Botón de iniciar sesión
-        Button(
-            onClick = onLogin,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
+            // Título
             Text(
-                text = "Iniciar sesión",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                text = "¡Bienvenido!",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // Botón de registro (opcional)
-        OutlinedButton(
-            onClick = { /* Acción de registro */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-        ) {
+            // Subtítulo
             Text(
-                text = "Crear cuenta",
+                text = "Inicia sesión para acceder a tu perfil",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Botón de iniciar sesión
+            Button(
+                onClick = onLogin,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .shadow(8.dp, RoundedCornerShape(28.dp)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White
+                ),
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Text(
+                    text = "Iniciar sesión",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFFC947)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón de registro
+            OutlinedButton(
+                onClick = { /* Acción de registro */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color.White
+                ),
+                border = androidx.compose.foundation.BorderStroke(2.dp, Color.White),
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Text(
+                    text = "Crear cuenta",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -119,129 +141,197 @@ fun ProfileScreenLoggedIn(onLogout: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .background(Color(0xFFF5F5F5))
     ) {
-        // Header simple con perfil
-        Card(
+        // Header con gradiente
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFFFC947),
+                            Color(0xFFFFB347)
+                        )
+                    )
+                )
+                .padding(bottom = 80.dp)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 40.dp, bottom = 60.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar
+                // Avatar con borde blanco
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
+                        .size(120.dp)
+                        .shadow(12.dp, CircleShape)
+                        .background(Color.White, CircleShape)
+                        .padding(6.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Avatar",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(40.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color(0xFFFFC947)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Avatar",
+                            tint = Color.White,
+                            modifier = Modifier.size(60.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = "Mi Perfil",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "usuario@launchix.com",
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color.White.copy(alpha = 0.9f)
                 )
             }
         }
 
-        // Opciones principales
-        ProfileOptionSimple(
-            icon = Icons.Default.ShoppingCart,
-            title = "Mis Pedidos",
-            onClick = { }
-        )
-
-        ProfileOptionSimple(
-            icon = Icons.Default.Favorite,
-            title = "Favoritos",
-            onClick = { }
-        )
-
-        ProfileOptionSimple(
-            icon = Icons.Default.Settings,
-            title = "Configuración",
-            onClick = { }
-        )
-
-        ProfileOptionSimple(
-            icon = Icons.Default.Help,
-            title = "Ayuda",
-            onClick = { }
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Botón de salir
-        OutlinedButton(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary
-            )
+        // Contenedor de opciones elevado
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = (-60).dp)
+                .padding(horizontal = 16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.ExitToApp,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Cerrar Sesión")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    ProfileOptionModern(
+                        icon = Icons.Default.ShoppingCart,
+                        title = "Mis Pedidos",
+                        onClick = { }
+                    )
+
+                    Divider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = Color(0xFFE0E0E0)
+                    )
+
+                    ProfileOptionModern(
+                        icon = Icons.Default.Favorite,
+                        title = "Favoritos",
+                        onClick = { }
+                    )
+
+                    Divider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = Color(0xFFE0E0E0)
+                    )
+
+                    ProfileOptionModern(
+                        icon = Icons.Default.Settings,
+                        title = "Configuración",
+                        onClick = { }
+                    )
+
+                    Divider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = Color(0xFFE0E0E0)
+                    )
+
+                    ProfileOptionModern(
+                        icon = Icons.Default.Help,
+                        title = "Ayuda",
+                        onClick = { }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Botón de cerrar sesión
+            OutlinedButton(
+                onClick = onLogout,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(bottom = 16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFFC947)
+                ),
+                border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFFFC947)),
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Cerrar Sesión",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileOptionSimple(
+fun ProfileOptionModern(
     icon: ImageVector,
     title: String,
     onClick: () -> Unit
 ) {
-    Card(
+    Surface(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(
+                        Color(0xFFFFC947).copy(alpha = 0.15f),
+                        RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFFFFC947),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -249,15 +339,15 @@ fun ProfileOptionSimple(
                 text = title,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color(0xFF333333),
                 modifier = Modifier.weight(1f)
             )
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                tint = Color(0xFFBDBDBD),
+                modifier = Modifier.size(24.dp)
             )
         }
     }

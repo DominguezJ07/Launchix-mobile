@@ -5,23 +5,23 @@ import androidx.compose.ui.graphics.Color
 // === PALETA DE COLORES LAUNCHIX - TEMA CLARO ===
 
 // Rojos principales (color de marca)
-val LaunchixRed = Color(0xFF2196F3)          // Azul vibrante principal val LaunchixRedDark = Color(0xFF1976D2)      // Rojo oscuro para contraste
+val LaunchixRed = Color(0xFFFDC040)          // Azul vibrante principal val LaunchixRedDark = Color(0xFF1976D2)      // Rojo oscuro para contraste
 val LaunchixRedLight = Color(0xFFEEEEF3)     // azul muy claro para backgrounds
-val LaunchixRedAccent = Color(0xFF1976D2)    // azul suave para acentos
+val LaunchixRedAccent = Color(0xFFFFB800)    // azul suave para acentos
 
 // Colores complementarios cálidos
 val LaunchixOrange = Color(0xFFFAFAFA)       // Naranja energético
-val LaunchixCoral = Color(0xFF2196F3)        // Coral suave
-val LaunchixRose = Color(0xFF2196F3)         // Rosa delicado
-val LaunchixPink = Color(0xFF2196F3)         // Rosa vibrante
+val LaunchixCoral = Color(0xFFFDC040)        // Coral suave
+val LaunchixRose = Color(0xFFFFB800)         // Rosa delicado
+val LaunchixPink = Color(0xFFFDC040)         // Rosa vibrante
 
 // Grises para texto y UI (tema claro)
 val Gray50 = Color(0xFFFAFAFA)               // Background muy claro
 val Gray100 = Color(0xFFF5F5F5)              // Background claro
-val Gray200 = Color(0xFFEEEEEE)              // Bordes suaves
-val Gray300 = Color(0xFF2196F3)              // Divisores
+val Gray200 = Color(0xFFFDC040)              // Bordes suaves
+val Gray300 = Color(0xFFFDC040)              // Divisores
 val Gray400 = Color(0xFFBDBDBD)              // Texto deshabilitado
-val Gray500 = Color(0xFF2196F3)              // Texto secundario
+val Gray500 = Color(0xFFFDC040)              // Texto secundario
 val Gray600 = Color(0xFF757575)              // Texto normal
 val Gray700 = Color(0xFF616161)              // Texto fuerte
 val Gray800 = Color(0xFF424242)              // Texto muy fuerte

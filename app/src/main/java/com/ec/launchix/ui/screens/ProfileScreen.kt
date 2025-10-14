@@ -1,7 +1,11 @@
 package com.ec.launchix.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -23,27 +28,36 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
-    // ✅ RECIBIR el estado de sesión desde el nivel superior
     isLoggedIn: Boolean,
     onLoginSuccess: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    // ✅ Para manejar la imagen de perfil
+    profileImageUri: Uri?,
+    onProfileImageSelected: (Uri?) -> Unit,
+    // ✅ NUEVO: Para manejar la información del usuario
+    userName: String,
+    userEmail: String,
+    onUserInfoChange: (name: String, email: String) -> Unit
 ) {
     if (isLoggedIn) {
-        // Mostrar perfil completo cuando está logueado
         LoggedInProfileScreen(
             navController = navController,
-            onLogout = onLogout // ✅ Usar la función del nivel superior
+            onLogout = onLogout,
+            profileImageUri = profileImageUri,
+            onProfileImageSelected = onProfileImageSelected,
+            userName = userName,
+            userEmail = userEmail
         )
     } else {
-        // Mostrar pantalla de inicio de sesión
         LoginPromptScreen(
-            onLoginClick = onLoginSuccess // ✅ Usar la función del nivel superior
+            onLoginClick = onLoginSuccess
         )
     }
 }
@@ -51,11 +65,25 @@ fun ProfileScreen(
 @Composable
 fun LoginPromptScreen(onLoginClick: () -> Unit) {
     var showLoginForm by remember { mutableStateOf(false) }
+    var showRegisterForm by remember { mutableStateOf(false) }
 
     if (showLoginForm) {
         LoginFormScreen(
             onBackClick = { showLoginForm = false },
-            onLoginSuccess = onLoginClick
+            onLoginSuccess = onLoginClick,
+            onRegisterClick = {
+                showLoginForm = false
+                showRegisterForm = true
+            }
+        )
+    } else if (showRegisterForm) {
+        RegisterFormScreen(
+            onBackClick = { showRegisterForm = false },
+            onRegisterSuccess = onLoginClick,
+            onLoginClick = {
+                showRegisterForm = false
+                showLoginForm = true
+            }
         )
     } else {
         Box(
@@ -71,7 +99,6 @@ fun LoginPromptScreen(onLoginClick: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Título de la pantalla
                 Text(
                     text = "Perfil",
                     fontSize = 24.sp,
@@ -85,7 +112,6 @@ fun LoginPromptScreen(onLoginClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Icono de usuario grande
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -142,6 +168,29 @@ fun LoginPromptScreen(onLoginClick: () -> Unit) {
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "¿No tienes cuenta?",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    TextButton(onClick = { showRegisterForm = true }) {
+                        Text(
+                            text = "Regístrate",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
             }
         }
@@ -152,17 +201,15 @@ fun LoginPromptScreen(onLoginClick: () -> Unit) {
 @Composable
 fun LoginFormScreen(
     onBackClick: () -> Unit,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onRegisterClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-
-    // ✅ Estados para validación de email
     var isEmailValid by remember { mutableStateOf(true) }
     var emailErrorMessage by remember { mutableStateOf("") }
 
-    // ✅ Función para validar email
     fun validateEmail(emailText: String) {
         when {
             emailText.isEmpty() -> {
@@ -192,7 +239,6 @@ fun LoginFormScreen(
         }
     }
 
-    // ✅ Función para manejar el login
     fun handleLogin() {
         validateEmail(email)
         if (isEmailValid && email.isNotEmpty() && password.isNotEmpty()) {
@@ -206,7 +252,6 @@ fun LoginFormScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        // Header con botón de regreso
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,7 +276,6 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Mensaje de bienvenida
         Text(
             text = "¡Bienvenido de vuelta!",
             fontSize = 24.sp,
@@ -251,7 +295,6 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Título del formulario
         Text(
             text = "Iniciar Sesión",
             fontSize = 20.sp,
@@ -263,7 +306,6 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Campo de email con validación
         Text(
             text = "Correo electrónico",
             fontSize = 14.sp,
@@ -277,7 +319,6 @@ fun LoginFormScreen(
             value = email,
             onValueChange = {
                 email = it
-                // ✅ Validar en tiempo real
                 validateEmail(it)
             },
             placeholder = {
@@ -293,21 +334,18 @@ fun LoginFormScreen(
                     tint = if (isEmailValid) Color.Gray else Color.Red
                 )
             },
-            // ✅ Mostrar error visual
             isError = !isEmailValid,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(12.dp),
-            // ✅ Colores de error
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = if (isEmailValid) MaterialTheme.colorScheme.primary else Color.Red,
                 unfocusedBorderColor = if (isEmailValid) Color.Gray else Color.Red
             )
         )
 
-        // ✅ Mensaje de error
         if (!isEmailValid && emailErrorMessage.isNotEmpty()) {
             Text(
                 text = emailErrorMessage,
@@ -319,7 +357,6 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Campo de contraseña
         Text(
             text = "Contraseña",
             fontSize = 14.sp,
@@ -363,7 +400,6 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ¿Olvidaste tu contraseña?
         TextButton(
             onClick = { /* TODO: Implementar recuperación de contraseña */ },
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -377,7 +413,6 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ✅ Botón de iniciar sesión con validación
         Button(
             onClick = { handleLogin() },
             modifier = Modifier
@@ -389,7 +424,6 @@ fun LoginFormScreen(
                 contentColor = Color.White
             ),
             shape = RoundedCornerShape(12.dp),
-            // ✅ Deshabilitar botón si email no es válido o campos vacíos
             enabled = isEmailValid && email.isNotEmpty() && password.isNotEmpty()
         ) {
             Text(
@@ -401,9 +435,31 @@ fun LoginFormScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "¿No tienes cuenta?",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            TextButton(onClick = onRegisterClick) {
+                Text(
+                    text = "Regístrate",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Continuar con Google
         OutlinedButton(
             onClick = { /* TODO: Implementar login con Google */ },
             modifier = Modifier
@@ -425,84 +481,446 @@ fun LoginFormScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoggedInProfileScreen(
-    navController: NavController,
-    onLogout: () -> Unit // ✅ Solo se llama cuando presionan "Cerrar Sesión"
+fun RegisterFormScreen(
+    onBackClick: () -> Unit,
+    onRegisterSuccess: () -> Unit,
+    onLoginClick: () -> Unit
 ) {
-    Box(
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var isEmailValid by remember { mutableStateOf(true) }
+    var emailErrorMessage by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf("") }
+
+    fun validateEmail(emailText: String) {
+        when {
+            emailText.isEmpty() -> {
+                isEmailValid = false
+                emailErrorMessage = "El correo electrónico es obligatorio"
+            }
+            !emailText.contains("@") -> {
+                isEmailValid = false
+                emailErrorMessage = "El correo debe contener el símbolo @"
+            }
+            emailText.count { it == '@' } > 1 -> {
+                isEmailValid = false
+                emailErrorMessage = "El correo solo puede tener un símbolo @"
+            }
+            emailText.startsWith("@") -> {
+                isEmailValid = false
+                emailErrorMessage = "El correo no puede empezar con @"
+            }
+            emailText.endsWith("@") -> {
+                isEmailValid = false
+                emailErrorMessage = "El correo debe tener texto después del @"
+            }
+            else -> {
+                isEmailValid = true
+                emailErrorMessage = ""
+            }
+        }
+    }
+
+    fun validatePassword() {
+        when {
+            password.isEmpty() -> {
+                passwordError = "La contraseña es obligatoria"
+            }
+            password.length < 6 -> {
+                passwordError = "La contraseña debe tener al menos 6 caracteres"
+            }
+            password != confirmPassword -> {
+                passwordError = "Las contraseñas no coinciden"
+            }
+            else -> {
+                passwordError = ""
+            }
+        }
+    }
+
+    fun handleRegister() {
+        validateEmail(email)
+        validatePassword()
+        if (isEmailValid && passwordError.isEmpty() &&
+            name.isNotEmpty() && email.isNotEmpty() &&
+            password.isNotEmpty() && confirmPassword.isNotEmpty()) {
+            onRegisterSuccess()
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Tarjeta de perfil con gradiente azul
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF2196F3) // Azul similar a la imagen
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = RoundedCornerShape(16.dp)
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Regresar",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Crear Cuenta",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "¡Bienvenido!",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Crea tu cuenta para comenzar",
+            fontSize = 16.sp,
+            color = Color.Gray,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text(
+            text = "Nombre completo",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            placeholder = {
+                Text(
+                    text = "Tu nombre completo",
+                    color = Color.Gray
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Nombre",
+                    tint = Color.Gray
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Correo electrónico",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = {
+                email = it
+                validateEmail(it)
+            },
+            placeholder = {
+                Text(
+                    text = "tu@email.com",
+                    color = Color.Gray
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Email",
+                    tint = if (isEmailValid) Color.Gray else Color.Red
+                )
+            },
+            isError = !isEmailValid,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (isEmailValid) MaterialTheme.colorScheme.primary else Color.Red,
+                unfocusedBorderColor = if (isEmailValid) Color.Gray else Color.Red
+            )
+        )
+
+        if (!isEmailValid && emailErrorMessage.isNotEmpty()) {
+            Text(
+                text = emailErrorMessage,
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Contraseña",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = {
+                password = it
+                if (confirmPassword.isNotEmpty()) validatePassword()
+            },
+            placeholder = {
+                Text(
+                    text = "Mínimo 6 caracteres",
+                    color = Color.Gray
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Contraseña",
+                    tint = Color.Gray
+                )
+            },
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                        tint = Color.Gray
+                    )
+                }
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Confirmar contraseña",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = {
+                confirmPassword = it
+                if (password.isNotEmpty()) validatePassword()
+            },
+            placeholder = {
+                Text(
+                    text = "Repite tu contraseña",
+                    color = Color.Gray
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Confirmar contraseña",
+                    tint = Color.Gray
+                )
+            },
+            trailingIcon = {
+                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                    Icon(
+                        imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                        tint = Color.Gray
+                    )
+                }
+            },
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            isError = passwordError.isNotEmpty() && confirmPassword.isNotEmpty(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        if (passwordError.isNotEmpty() && confirmPassword.isNotEmpty()) {
+            Text(
+                text = passwordError,
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = { handleRegister() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Black,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(12.dp),
+            enabled = name.isNotEmpty() && isEmailValid && email.isNotEmpty() &&
+                    password.isNotEmpty() && confirmPassword.isNotEmpty()
+        ) {
+            Text(
+                text = "Crear Cuenta",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "¿Ya tienes cuenta?",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            TextButton(onClick = onLoginClick) {
+                Text(
+                    text = "Inicia sesión",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoggedInProfileScreen(
+    navController: NavController,
+    onLogout: () -> Unit,
+    profileImageUri: Uri?,
+    onProfileImageSelected: (Uri?) -> Unit,
+    // ✅ NUEVO: Recibir información del usuario
+    userName: String,
+    userEmail: String
+) {
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { onProfileImageSelected(it) }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.size(140.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
+                        .size(140.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFDC040).copy(alpha = 0.1f))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFDC040).copy(alpha = 0.15f))
+                        .border(4.dp, Color(0xFFFDC040).copy(alpha = 0.3f), CircleShape)
+                        .clickable { imagePickerLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Avatar con círculos concéntricos
-                        Box(
-                            modifier = Modifier.size(80.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // Círculo exterior
-                            Box(
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.2f))
-                            )
-                            // Círculo interior
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Avatar",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(30.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Mi Perfil",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                    if (profileImageUri != null) {
+                        AsyncImage(
+                            model = profileImageUri,
+                            contentDescription = "Foto de perfil",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Avatar",
+                            tint = Color(0xFFFDC040),
+                            modifier = Modifier.size(60.dp)
+                        )
+                    }
+                }
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "usuario@launchix.com",
-                            fontSize = 16.sp,
-                            color = Color.White.copy(alpha = 0.9f)
+                Box(
+                    modifier = Modifier
+                        .size(140.dp)
+                        .padding(8.dp),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFDC040))
+                            .clickable { imagePickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar foto",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -510,72 +928,93 @@ fun LoggedInProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ✅ Opciones del perfil CON NAVEGACIÓN
-            ProfileOptionCard(
-                icon = Icons.Default.ShoppingCart,
-                title = "Mis Pedidos",
-                iconColor = Color(0xFF2196F3),
-                onClick = { navController.navigate("orders") }
+            // ✅ Mostrar el nombre del usuario dinámicamente
+            Text(
+                text = userName,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            ProfileOptionCard(
-                icon = Icons.Default.Favorite,
-                title = "Favoritos",
-                iconColor = Color(0xFF2196F3),
-                onClick = { navController.navigate("favorites") }
+            // ✅ Mostrar el email del usuario dinámicamente
+            Text(
+                text = userEmail,
+                fontSize = 15.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            ProfileOptionCard(
-                icon = Icons.Default.Settings,
-                title = "Configuración",
-                iconColor = Color(0xFF2196F3),
-                onClick = { navController.navigate("settings") }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            ProfileOptionCard(
-                icon = Icons.Default.Help,
-                title = "Ayuda",
-                iconColor = Color(0xFF2196F3),
-                onClick = { navController.navigate("help") }
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Botón de cerrar sesión
-            OutlinedButton(
-                onClick = onLogout, // ✅ Solo cierra sesión cuando presionan este botón
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(50.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF2196F3)
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    Color(0xFF2196F3)
-                ),
-                shape = RoundedCornerShape(25.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Logout,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color(0xFF2196F3)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Cerrar Sesión",
-                    fontSize = 16.sp
-                )
-            }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ProfileOptionCard(
+            icon = Icons.Default.ShoppingCart,
+            title = "Mis Pedidos",
+            iconColor = Color(0xFFFDC040),
+            onClick = { navController.navigate("orders") }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ProfileOptionCard(
+            icon = Icons.Default.Favorite,
+            title = "Favoritos",
+            iconColor = Color(0xFFFDC040),
+            onClick = { navController.navigate("favorites") }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ProfileOptionCard(
+            icon = Icons.Default.Settings,
+            title = "Configuración",
+            iconColor = Color(0xFFFDC040),
+            onClick = { navController.navigate("settings") }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ProfileOptionCard(
+            icon = Icons.Default.Help,
+            title = "Ayuda",
+            iconColor = Color(0xFFFDC040),
+            onClick = { navController.navigate("help") }
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(50.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFFFFB800)
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                Color(0xFFFFB800)
+            ),
+            shape = RoundedCornerShape(25.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Logout,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = Color(0xFFFFB800)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Cerrar Sesión",
+                fontSize = 16.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
