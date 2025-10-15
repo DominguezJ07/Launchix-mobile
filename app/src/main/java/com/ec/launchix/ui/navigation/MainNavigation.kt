@@ -18,6 +18,7 @@ import androidx.navigation.navArgument
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ec.launchix.ui.screens.*
 import com.ec.launchix.ui.screens.profile.FavoritesScreen
+import com.ec.launchix.ui.screens.auth.AuthPromptScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,9 +28,10 @@ fun MainNavigation(
 ) {
     val navController = rememberNavController()
 
-    // ✅ CREAR EL VIEWMODEL AQUÍ - UNA SOLA VEZ
+    // ✅ ViewModels
     val cartViewModel: CartViewModel = viewModel()
 
+    // ✅ Estados de autenticación
     var isLoggedIn by rememberSaveable { mutableStateOf(false) }
     var profileImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var userName by rememberSaveable { mutableStateOf("Usuario Launchix") }
@@ -38,6 +40,18 @@ fun MainNavigation(
 
     val profileImageUri = profileImageUriString?.let { Uri.parse(it) }
 
+    // ✅ SI NO ESTÁ LOGUEADO, MOSTRAR SOLO LA PANTALLA DE AUTH
+    if (!isLoggedIn) {
+        AuthPromptScreen(
+            onLoginSuccess = {
+                isLoggedIn = true
+                // TODO: Obtener datos del usuario desde el ViewModel
+            }
+        )
+        return
+    }
+
+    // ✅ SI ESTÁ LOGUEADO, MOSTRAR LA APP COMPLETA
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
@@ -69,7 +83,6 @@ fun MainNavigation(
 
                         NavigationBarItem(
                             icon = {
-                                // ✅ Mostrar badge con el total de items en el carrito
                                 if (screen.route == Screen.Cart.route) {
                                     val totalItems = cartViewModel.getTotalItems()
                                     BadgedBox(
@@ -177,7 +190,7 @@ fun MainNavigation(
 
             composable(Screen.Products.route) {
                 ProductsScreen(
-                    cartViewModel = cartViewModel, // ✅ Pasar el ViewModel
+                    cartViewModel = cartViewModel,
                     onProductClick = { productId -> },
                     onNavigateToCart = {
                         navController.navigate(Screen.Cart.route) {
@@ -198,7 +211,7 @@ fun MainNavigation(
                 val category = backStackEntry.arguments?.getString("category") ?: "Todos"
 
                 ProductsScreen(
-                    cartViewModel = cartViewModel, // ✅ Pasar el ViewModel
+                    cartViewModel = cartViewModel,
                     initialCategory = category,
                     onProductClick = { productId -> },
                     onNavigateToCart = {
@@ -221,7 +234,7 @@ fun MainNavigation(
 
             composable(Screen.Cart.route) {
                 CartScreen(
-                    cartViewModel = cartViewModel, // ✅ Pasar el MISMO ViewModel
+                    cartViewModel = cartViewModel,
                     onNavigateToProducts = {
                         navController.navigate(Screen.Products.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -238,22 +251,19 @@ fun MainNavigation(
                 ProfileScreen(
                     navController = navController,
                     isLoggedIn = isLoggedIn,
-                    onLoginSuccess = {
-                        isLoggedIn = true
-                    },
+                    onLoginClick = { },
                     onLogout = {
                         isLoggedIn = false
+                        userName = "Usuario Launchix"
+                        userEmail = "usuario@launchix.com"
+                        profileImageUriString = null
                     },
                     profileImageUri = profileImageUri,
                     onProfileImageSelected = { uri ->
                         profileImageUriString = uri?.toString()
                     },
                     userName = userName,
-                    userEmail = userEmail,
-                    onUserInfoChange = { name, email ->
-                        userName = name
-                        userEmail = email
-                    }
+                    userEmail = userEmail
                 )
             }
 

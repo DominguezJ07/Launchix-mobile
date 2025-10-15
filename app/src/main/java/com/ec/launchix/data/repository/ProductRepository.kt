@@ -10,15 +10,5 @@ class ProductRepository {
         return ApiClient.apiService.getProducts()
     }
 
-    suspend fun getProductById(id: Int): Response<Product> {
-        return ApiClient.apiService.getProductById(id)
-    }
 
-    suspend fun getPopularProducts(): Response<List<Product>> {
-        return ApiClient.apiService.getPopularProducts()
-    }
-
-    suspend fun getFeaturedProducts(): Response<List<Product>> {
-        return ApiClient.apiService.getFeaturedProducts()
-    }
 }
