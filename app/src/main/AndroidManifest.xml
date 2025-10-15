@@ -14,10 +14,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Launchix">
-        
+        <activity
+            android:name=".ui.screens.ProductActivity"
+            android:exported="false" />
         <!-- Main Activity -->
         <activity
-            android:name="com.ec.launchix.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Launchix">
             <intent-filter>
