@@ -2,6 +2,8 @@ package com.ec.launchix.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -10,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,290 +90,346 @@ fun RegisterScreen(
         if (isEmailValid && passwordError.isEmpty() &&
             name.isNotEmpty() && email.isNotEmpty() &&
             password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-            // TODO: Implementar llamada al AuthViewModel
             onRegisterSuccess()
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFFFF8E1),
+                        Color(0xFFFFFFFF),
+                        Color(0xFFFFF3E0)
+                    )
+                )
+            )
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Regresar",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Crear Cuenta",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "¡Bienvenido!",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Crea tu cuenta para comenzar",
-            fontSize = 16.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Nombre completo",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            placeholder = {
-                Text(
-                    text = "Tu nombre completo",
-                    color = Color.Gray
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Nombre",
-                    tint = Color.Gray
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Correo electrónico",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                email = it
-                validateEmail(it)
-            },
-            placeholder = {
-                Text(
-                    text = "tu@email.com",
-                    color = Color.Gray
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Email,
-                    contentDescription = "Email",
-                    tint = if (isEmailValid) Color.Gray else Color.Red
-                )
-            },
-            isError = !isEmailValid,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = if (isEmailValid) MaterialTheme.colorScheme.primary else Color.Red,
-                unfocusedBorderColor = if (isEmailValid) Color.Gray else Color.Red
-            )
-        )
-
-        if (!isEmailValid && emailErrorMessage.isNotEmpty()) {
-            Text(
-                text = emailErrorMessage,
-                color = Color.Red,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Contraseña",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                if (confirmPassword.isNotEmpty()) validatePassword()
-            },
-            placeholder = {
-                Text(
-                    text = "Mínimo 6 caracteres",
-                    color = Color.Gray
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Contraseña",
-                    tint = Color.Gray
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+            // ✅ Header con flecha - IGUAL QUE EN LoginScreen
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)
+            ) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
                     Icon(
-                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
-                        tint = Color.Gray
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Regresar",
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-            },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp)
-        )
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Confirmar contraseña",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = {
-                confirmPassword = it
-                if (password.isNotEmpty()) validatePassword()
-            },
-            placeholder = {
+            // Header con título
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    text = "Repite tu contraseña",
-                    color = Color.Gray
+                    text = "Crear Cuenta ✨",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
                 )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Confirmar contraseña",
-                    tint = Color.Gray
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                    Icon(
-                        imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (confirmPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña",
-                        tint = Color.Gray
-                    )
-                }
-            },
-            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            isError = passwordError.isNotEmpty() && confirmPassword.isNotEmpty(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp)
-        )
 
-        if (passwordError.isNotEmpty() && confirmPassword.isNotEmpty()) {
-            Text(
-                text = passwordError,
-                color = Color.Red,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-        }
+                Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = { handleRegister() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black,
-                contentColor = Color.White
-            ),
-            shape = RoundedCornerShape(12.dp),
-            enabled = name.isNotEmpty() && isEmailValid && email.isNotEmpty() &&
-                    password.isNotEmpty() && confirmPassword.isNotEmpty()
-        ) {
-            Text(
-                text = "Crear Cuenta",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "¿Ya tienes cuenta?",
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            TextButton(onClick = onLoginClick) {
                 Text(
-                    text = "Inicia sesión",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
+                    text = "Únete a nosotros hoy",
+                    fontSize = 16.sp,
+                    color = Color(0xFF757575)
                 )
             }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Card blanca con el formulario
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Campo Nombre
+                    Text(
+                        text = "Nombre completo",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        placeholder = {
+                            Text(
+                                text = "Tu nombre",
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Nombre",
+                                tint = Color(0xFFFF9800)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF9800),
+                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
+                            focusedContainerColor = Color(0xFFFFF3E0).copy(alpha = 0.3f),
+                            unfocusedContainerColor = Color.Gray.copy(alpha = 0.03f)
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Campo Email
+                    Text(
+                        text = "Correo electrónico",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            validateEmail(it)
+                        },
+                        placeholder = {
+                            Text(
+                                text = "tu@email.com",
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = "Email",
+                                tint = if (isEmailValid) Color(0xFFFF9800) else Color.Red
+                            )
+                        },
+                        isError = !isEmailValid,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF9800),
+                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
+                            errorBorderColor = Color.Red,
+                            focusedContainerColor = Color(0xFFFFF3E0).copy(alpha = 0.3f),
+                            unfocusedContainerColor = Color.Gray.copy(alpha = 0.03f)
+                        )
+                    )
+
+                    if (!isEmailValid && emailErrorMessage.isNotEmpty()) {
+                        Text(
+                            text = emailErrorMessage,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Campo Contraseña
+                    Text(
+                        text = "Contraseña",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = {
+                            password = it
+                            if (confirmPassword.isNotEmpty()) validatePassword()
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Mínimo 6 caracteres",
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Contraseña",
+                                tint = Color(0xFFFF9800)
+                            )
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Ocultar" else "Mostrar",
+                                    tint = Color.Gray
+                                )
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF9800),
+                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
+                            focusedContainerColor = Color(0xFFFFF3E0).copy(alpha = 0.3f),
+                            unfocusedContainerColor = Color.Gray.copy(alpha = 0.03f)
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Campo Confirmar Contraseña
+                    Text(
+                        text = "Confirmar contraseña",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = {
+                            confirmPassword = it
+                            if (password.isNotEmpty()) validatePassword()
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Repite tu contraseña",
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Confirmar",
+                                tint = Color(0xFFFF9800)
+                            )
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (confirmPasswordVisible) "Ocultar" else "Mostrar",
+                                    tint = Color.Gray
+                                )
+                            }
+                        },
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        isError = passwordError.isNotEmpty() && confirmPassword.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF9800),
+                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
+                            errorBorderColor = Color.Red,
+                            focusedContainerColor = Color(0xFFFFF3E0).copy(alpha = 0.3f),
+                            unfocusedContainerColor = Color.Gray.copy(alpha = 0.03f)
+                        )
+                    )
+
+                    if (passwordError.isNotEmpty() && confirmPassword.isNotEmpty()) {
+                        Text(
+                            text = passwordError,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Button(
+                        onClick = { handleRegister() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF9800),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = name.isNotEmpty() && isEmailValid && email.isNotEmpty() &&
+                                password.isNotEmpty() && confirmPassword.isNotEmpty(),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = "Crear Cuenta",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "¿Ya tienes cuenta?",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                        TextButton(onClick = onLoginClick) {
+                            Text(
+                                text = "Inicia sesión",
+                                fontSize = 14.sp,
+                                color = Color(0xFFFF9800),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
