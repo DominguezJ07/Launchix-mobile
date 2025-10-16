@@ -1,6 +1,8 @@
 package com.ec.launchix.ui.navigation
 
 import android.net.Uri
+import android.util.Log
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
@@ -26,32 +28,80 @@ fun MainNavigation(
     isDarkMode: Boolean,
     onDarkModeToggle: (Boolean) -> Unit
 ) {
-    val navController = rememberNavController()
-
-    // ✅ ViewModels
-    val cartViewModel: CartViewModel = viewModel()
-
-    // ✅ Estados de autenticación
+    // ✅ CAMBIO: Usar rememberSaveable en lugar de remember
     var isLoggedIn by rememberSaveable { mutableStateOf(false) }
-    var profileImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var userName by rememberSaveable { mutableStateOf("Usuario Launchix") }
     var userEmail by rememberSaveable { mutableStateOf("usuario@launchix.com") }
+    var authToken by rememberSaveable { mutableStateOf<String?>(null) }
+    var profileImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var userPhone by rememberSaveable { mutableStateOf("+593 999 999 999") }
 
-    val profileImageUri = profileImageUriString?.let { Uri.parse(it) }
-
-    // ✅ SI NO ESTÁ LOGUEADO, MOSTRAR SOLO LA PANTALLA DE AUTH
-    if (!isLoggedIn) {
-        AuthPromptScreen(
-            onLoginSuccess = {
-                isLoggedIn = true
-                // TODO: Obtener datos del usuario desde el ViewModel
-            }
-        )
-        return
+    // ✅ DEBUG: Log para ver el estado
+    LaunchedEffect(isLoggedIn) {
+        Log.d("MainNavigation", "isLoggedIn cambió a: $isLoggedIn")
     }
 
-    // ✅ SI ESTÁ LOGUEADO, MOSTRAR LA APP COMPLETA
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLoggedIn) {
+            Log.d("MainNavigation", "Mostrando AppContent")
+            // MOSTRAR APP COMPLETA
+            AppContent(
+                isDarkMode = isDarkMode,
+                onDarkModeToggle = onDarkModeToggle,
+                userName = userName,
+                userEmail = userEmail,
+                userPhone = userPhone,
+                profileImageUriString = profileImageUriString,
+                onLogout = {
+                    isLoggedIn = false
+                    userName = "Usuario Launchix"
+                    userEmail = "usuario@launchix.com"
+                    authToken = null
+                    profileImageUriString = null
+                },
+                onUserInfoChange = { name, email, phone ->
+                    userName = name
+                    userEmail = email
+                    userPhone = phone
+                },
+                onProfileImageSelected = { uri ->
+                    profileImageUriString = uri?.toString()
+                }
+            )
+        } else {
+            Log.d("MainNavigation", "Mostrando AuthPromptScreen")
+            // MOSTRAR PANTALLA DE AUTH
+            AuthPromptScreen(
+                onLoginSuccess = { name, email, token ->
+                    Log.d("MainNavigation", "onLoginSuccess llamado - name: $name, email: $email")
+                    userName = name
+                    userEmail = email
+                    authToken = token
+                    isLoggedIn = true // ✅ Esto debería cambiar el estado
+                    Log.d("MainNavigation", "isLoggedIn después de cambio: $isLoggedIn")
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppContent(
+    isDarkMode: Boolean,
+    onDarkModeToggle: (Boolean) -> Unit,
+    userName: String,
+    userEmail: String,
+    userPhone: String,
+    profileImageUriString: String?,
+    onLogout: () -> Unit,
+    onUserInfoChange: (String, String, String) -> Unit,
+    onProfileImageSelected: (Uri?) -> Unit
+) {
+    val navController = rememberNavController()
+    val cartViewModel: CartViewModel = viewModel()
+    val profileImageUri = profileImageUriString?.let { Uri.parse(it) }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
@@ -250,18 +300,11 @@ fun MainNavigation(
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     navController = navController,
-                    isLoggedIn = isLoggedIn,
+                    isLoggedIn = true,
                     onLoginClick = { },
-                    onLogout = {
-                        isLoggedIn = false
-                        userName = "Usuario Launchix"
-                        userEmail = "usuario@launchix.com"
-                        profileImageUriString = null
-                    },
+                    onLogout = onLogout,
                     profileImageUri = profileImageUri,
-                    onProfileImageSelected = { uri ->
-                        profileImageUriString = uri?.toString()
-                    },
+                    onProfileImageSelected = onProfileImageSelected,
                     userName = userName,
                     userEmail = userEmail
                 )
@@ -281,11 +324,7 @@ fun MainNavigation(
                     userName = userName,
                     userEmail = userEmail,
                     userPhone = userPhone,
-                    onUserInfoChange = { name, email, phone ->
-                        userName = name
-                        userEmail = email
-                        userPhone = phone
-                    },
+                    onUserInfoChange = onUserInfoChange,
                     isDarkMode = isDarkMode,
                     onDarkModeToggle = onDarkModeToggle
                 )

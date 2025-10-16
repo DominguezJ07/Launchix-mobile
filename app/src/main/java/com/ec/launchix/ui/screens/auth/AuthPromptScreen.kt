@@ -22,9 +22,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun AuthPromptScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (name: String, email: String, token: String) -> Unit
 ) {
-    // ✅ CAMBIO: Usar rememberSaveable en lugar de remember
     var showLoginScreen by rememberSaveable { mutableStateOf(false) }
     var showRegisterScreen by rememberSaveable { mutableStateOf(false) }
 
@@ -43,7 +42,6 @@ fun AuthPromptScreen(
         }
         showRegisterScreen -> {
             RegisterScreen(
-                // ✅ SOLUCIÓN: La flecha regresa a la pantalla de bienvenida
                 onBackClick = {
                     showRegisterScreen = false
                 },
@@ -76,7 +74,6 @@ fun AuthPromptScreen(
                 ) {
                     Spacer(modifier = Modifier.height(40.dp))
 
-                    // Header con logo o app name
                     Text(
                         text = "Launchix",
                         fontSize = 28.sp,
@@ -90,7 +87,6 @@ fun AuthPromptScreen(
 
                     Spacer(modifier = Modifier.weight(0.5f))
 
-                    // Avatar con sombra y diseño mejorado
                     Box(
                         modifier = Modifier
                             .size(140.dp)
@@ -116,7 +112,6 @@ fun AuthPromptScreen(
 
                     Spacer(modifier = Modifier.height(48.dp))
 
-                    // Título principal
                     Text(
                         text = "Bienvenido a tu perfil",
                         fontSize = 26.sp,
@@ -138,7 +133,6 @@ fun AuthPromptScreen(
 
                     Spacer(modifier = Modifier.height(48.dp))
 
-                    // Botón principal con gradiente
                     Button(
                         onClick = { showLoginScreen = true },
                         modifier = Modifier
@@ -176,7 +170,6 @@ fun AuthPromptScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Botón secundario para registro
                     OutlinedButton(
                         onClick = { showRegisterScreen = true },
                         modifier = Modifier
@@ -199,7 +192,6 @@ fun AuthPromptScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Info adicional
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -229,7 +221,6 @@ fun AuthPromptScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // Footer
                     Text(
                         text = "Al continuar, aceptas nuestros Términos y Condiciones",
                         fontSize = 12.sp,
