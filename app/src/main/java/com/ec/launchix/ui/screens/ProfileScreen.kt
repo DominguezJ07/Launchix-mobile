@@ -39,21 +39,16 @@ fun ProfileScreen(
     userName: String,
     userEmail: String
 ) {
-    if (isLoggedIn) {
-        LoggedInProfileScreen(
-            navController = navController,
-            onLogout = onLogout,
-            profileImageUri = profileImageUri,
-            onProfileImageSelected = onProfileImageSelected,
-            userName = userName,
-            userEmail = userEmail
-        )
-    } else {
-        // Navegar a la pantalla de autenticación
-        LaunchedEffect(Unit) {
-            navController.navigate("auth_prompt")
-        }
-    }
+    // ✅ SIEMPRE MUESTRA EL PERFIL, sin importar si está logueado o no
+    LoggedInProfileScreen(
+        navController = navController,
+        onLogout = onLogout,
+        profileImageUri = profileImageUri,
+        onProfileImageSelected = onProfileImageSelected,
+        userName = userName,
+        userEmail = userEmail,
+        isLoggedIn = isLoggedIn
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +59,8 @@ fun LoggedInProfileScreen(
     profileImageUri: Uri?,
     onProfileImageSelected: (Uri?) -> Unit,
     userName: String,
-    userEmail: String
+    userEmail: String,
+    isLoggedIn: Boolean = true
 ) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -204,32 +200,36 @@ fun LoggedInProfileScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        OutlinedButton(
-            onClick = onLogout,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(50.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color(0xFFFFB800)
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                Color(0xFFFFB800)
-            ),
-            shape = RoundedCornerShape(25.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Logout,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = Color(0xFFFFB800)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Cerrar Sesión",
-                fontSize = 16.sp
-            )
+        // ✅ Mostrar botón de logout solo si está logueado
+        // Si no está logueado, puedes mostrar un botón de "Iniciar Sesión" opcional
+        if (isLoggedIn) {
+            OutlinedButton(
+                onClick = onLogout,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(50.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFFB800)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    Color(0xFFFFB800)
+                ),
+                shape = RoundedCornerShape(25.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Logout,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color(0xFFFFB800)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Cerrar Sesión",
+                    fontSize = 16.sp
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

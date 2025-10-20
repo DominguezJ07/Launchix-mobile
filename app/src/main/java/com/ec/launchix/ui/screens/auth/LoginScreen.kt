@@ -68,7 +68,7 @@ fun LoginScreen(
                 val body = json.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url("https://launchixapi-production.up.railway.app/api/v1/login")
+                    .url("https://launchixapi-final-production.up.railway.app/api/v1/login")
                     .post(body)
                     .addHeader("Accept", "application/json")
                     .addHeader("Content-Type", "application/json")

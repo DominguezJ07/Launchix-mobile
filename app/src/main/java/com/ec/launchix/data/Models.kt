@@ -637,7 +637,7 @@ object SampleData {
         // s4 - Jardinería y Paisajismo
         Service(
             id = "s4",
-            name = "Jardinería y Paisajismo",
+            name = "Jardinería",
             description = "Diseño y mantenimiento",
             price = 90.0,
             originalPrice = 110.0,

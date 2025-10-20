@@ -28,7 +28,6 @@ fun MainNavigation(
     isDarkMode: Boolean,
     onDarkModeToggle: (Boolean) -> Unit
 ) {
-    // ✅ CAMBIO: Usar rememberSaveable en lugar de remember
     var isLoggedIn by rememberSaveable { mutableStateOf(false) }
     var userName by rememberSaveable { mutableStateOf("Usuario Launchix") }
     var userEmail by rememberSaveable { mutableStateOf("usuario@launchix.com") }
@@ -36,52 +35,43 @@ fun MainNavigation(
     var profileImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var userPhone by rememberSaveable { mutableStateOf("+593 999 999 999") }
 
-    // ✅ DEBUG: Log para ver el estado
     LaunchedEffect(isLoggedIn) {
         Log.d("MainNavigation", "isLoggedIn cambió a: $isLoggedIn")
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (isLoggedIn) {
-            Log.d("MainNavigation", "Mostrando AppContent")
-            // MOSTRAR APP COMPLETA
-            AppContent(
-                isDarkMode = isDarkMode,
-                onDarkModeToggle = onDarkModeToggle,
-                userName = userName,
-                userEmail = userEmail,
-                userPhone = userPhone,
-                profileImageUriString = profileImageUriString,
-                onLogout = {
-                    isLoggedIn = false
-                    userName = "Usuario Launchix"
-                    userEmail = "usuario@launchix.com"
-                    authToken = null
-                    profileImageUriString = null
-                },
-                onUserInfoChange = { name, email, phone ->
-                    userName = name
-                    userEmail = email
-                    userPhone = phone
-                },
-                onProfileImageSelected = { uri ->
-                    profileImageUriString = uri?.toString()
-                }
-            )
-        } else {
-            Log.d("MainNavigation", "Mostrando AuthPromptScreen")
-            // MOSTRAR PANTALLA DE AUTH
-            AuthPromptScreen(
-                onLoginSuccess = { name, email, token ->
-                    Log.d("MainNavigation", "onLoginSuccess llamado - name: $name, email: $email")
-                    userName = name
-                    userEmail = email
-                    authToken = token
-                    isLoggedIn = true // ✅ Esto debería cambiar el estado
-                    Log.d("MainNavigation", "isLoggedIn después de cambio: $isLoggedIn")
-                }
-            )
-        }
+        AppContent(
+            isDarkMode = isDarkMode,
+            onDarkModeToggle = onDarkModeToggle,
+            userName = userName,
+            userEmail = userEmail,
+            userPhone = userPhone,
+            profileImageUriString = profileImageUriString,
+            isLoggedIn = isLoggedIn,
+            onLogout = {
+                isLoggedIn = false
+                userName = "Usuario Launchix"
+                userEmail = "usuario@launchix.com"
+                authToken = null
+                profileImageUriString = null
+            },
+            onLoginSuccess = { name, email, token ->
+                Log.d("MainNavigation", "onLoginSuccess llamado - name: $name, email: $email")
+                userName = name
+                userEmail = email
+                authToken = token
+                isLoggedIn = true
+                Log.d("MainNavigation", "isLoggedIn después de cambio: $isLoggedIn")
+            },
+            onUserInfoChange = { name, email, phone ->
+                userName = name
+                userEmail = email
+                userPhone = phone
+            },
+            onProfileImageSelected = { uri ->
+                profileImageUriString = uri?.toString()
+            }
+        )
     }
 }
 
@@ -94,7 +84,9 @@ private fun AppContent(
     userEmail: String,
     userPhone: String,
     profileImageUriString: String?,
+    isLoggedIn: Boolean,
     onLogout: () -> Unit,
+    onLoginSuccess: (String, String, String) -> Unit,
     onUserInfoChange: (String, String, String) -> Unit,
     onProfileImageSelected: (Uri?) -> Unit
 ) {
@@ -243,12 +235,18 @@ private fun AppContent(
                     cartViewModel = cartViewModel,
                     onProductClick = { productId -> },
                     onNavigateToCart = {
-                        navController.navigate(Screen.Cart.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        if (isLoggedIn) {
+                            navController.navigate(Screen.Cart.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        } else {
+                            navController.navigate("auth_checkout") {
+                                launchSingleTop = true
+                            }
                         }
                     }
                 )
@@ -265,12 +263,18 @@ private fun AppContent(
                     initialCategory = category,
                     onProductClick = { productId -> },
                     onNavigateToCart = {
-                        navController.navigate(Screen.Cart.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        if (isLoggedIn) {
+                            navController.navigate(Screen.Cart.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        } else {
+                            navController.navigate("auth_checkout") {
+                                launchSingleTop = true
+                            }
                         }
                     }
                 )
@@ -282,6 +286,7 @@ private fun AppContent(
                 )
             }
 
+            // ✅ MODIFICACIÓN PRINCIPAL: CartScreen ahora recibe isLoggedIn y onNavigateToAuth
             composable(Screen.Cart.route) {
                 CartScreen(
                     cartViewModel = cartViewModel,
@@ -293,6 +298,25 @@ private fun AppContent(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    isLoggedIn = isLoggedIn, // ✅ Pasa el estado de login
+                    onNavigateToAuth = { // ✅ Callback para ir a autenticación
+                        navController.navigate("auth_checkout") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // ✅ RUTA DE AUTH: Para checkout o login desde cualquier parte
+            composable("auth_checkout") {
+                AuthPromptScreen(
+                    onLoginSuccess = { name, email, token ->
+                        onLoginSuccess(name, email, token)
+                        // Después de login exitoso, lo lleva de vuelta al carrito
+                        navController.navigate(Screen.Cart.route) {
+                            popUpTo("auth_checkout") { inclusive = true }
+                        }
                     }
                 )
             }
@@ -300,9 +324,16 @@ private fun AppContent(
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     navController = navController,
-                    isLoggedIn = true,
-                    onLoginClick = { },
-                    onLogout = onLogout,
+                    isLoggedIn = isLoggedIn,
+                    onLoginClick = {
+                        navController.navigate("auth_checkout")
+                    },
+                    onLogout = {
+                        onLogout()
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
                     profileImageUri = profileImageUri,
                     onProfileImageSelected = onProfileImageSelected,
                     userName = userName,

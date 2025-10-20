@@ -35,11 +35,14 @@ data class CartItem(
 @Composable
 fun CartScreen(
     cartViewModel: CartViewModel = viewModel(),
-    onNavigateToProducts: () -> Unit = {}
+    onNavigateToProducts: () -> Unit = {},
+    isLoggedIn: Boolean = false, // ✅ NUEVO: Recibe el estado de login
+    onNavigateToAuth: () -> Unit = {} // ✅ NUEVO: Callback para ir a login
 ) {
     val cartItems by cartViewModel.cartItems.collectAsState()
     var showCheckoutDialog by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+    var showLoginRequiredDialog by remember { mutableStateOf(false) } // ✅ NUEVO: Diálogo de login requerido
 
     Column(
         modifier = Modifier
@@ -216,7 +219,14 @@ fun CartScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
-                            onClick = { showCheckoutDialog = true },
+                            onClick = {
+                                // ✅ NUEVO: Verificar login antes de proceder
+                                if (isLoggedIn) {
+                                    showCheckoutDialog = true
+                                } else {
+                                    showLoginRequiredDialog = true
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
@@ -234,6 +244,55 @@ fun CartScreen(
                 }
             }
         }
+    }
+
+    // ✅ NUEVO: Diálogo pidiendo login
+    if (showLoginRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showLoginRequiredDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Inicia Sesión",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            },
+            text = {
+                Text(
+                    "Para continuar con tu compra, necesitas iniciar sesión o crear una cuenta.",
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLoginRequiredDialog = false
+                        onNavigateToAuth()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Login, null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Iniciar Sesión")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showLoginRequiredDialog = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     // Diálogo de confirmación de checkout

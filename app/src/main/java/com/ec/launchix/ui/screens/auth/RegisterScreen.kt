@@ -77,7 +77,7 @@ fun RegisterScreen(
                 val body = json.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url("https://launchixapi-production.up.railway.app/api/v1/register")
+                    .url("https://launchixapi-final-production.up.railway.app/api/v1/register")
                     .post(body)
                     .addHeader("Accept", "application/json")
                     .addHeader("Content-Type", "application/json")
