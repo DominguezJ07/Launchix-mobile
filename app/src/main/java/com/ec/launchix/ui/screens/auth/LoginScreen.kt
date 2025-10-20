@@ -24,6 +24,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ec.launchix.ui.screens.auth.LoginRequest
+import com.ec.launchix.ui.screens.auth.LoginResponse
+import com.ec.launchix.ui.screens.auth.UserData
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -34,6 +37,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +62,8 @@ fun LoginScreen(
     suspend fun performLogin() {
         withContext(Dispatchers.IO) {
             try {
+                Log.d("LoginScreen", "=== INICIANDO LOGIN ===")
+
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
@@ -67,6 +73,8 @@ fun LoginScreen(
                 val json = gson.toJson(loginRequest)
                 val body = json.toRequestBody("application/json".toMediaType())
 
+                Log.d("LoginScreen", "Request body: $json")
+
                 val request = Request.Builder()
                     .url("https://launchixapi-final-production.up.railway.app/api/v1/login")
                     .post(body)
@@ -74,40 +82,66 @@ fun LoginScreen(
                     .addHeader("Content-Type", "application/json")
                     .build()
 
+                Log.d("LoginScreen", "Enviando request al API...")
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
 
+                Log.d("LoginScreen", "Response code: ${response.code}")
+                Log.d("LoginScreen", "Response body: $responseBody")
+
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful && responseBody != null) {
-                        val loginResponse = gson.fromJson(responseBody, LoginResponse::class.java)
-                        if (loginResponse.success) {
-                            errorMessage = null
-                            showSuccessMessage = true
+                        try {
+                            val loginResponse = gson.fromJson(responseBody, LoginResponse::class.java)
+                            Log.d("LoginScreen", "Respuesta parseada - Success: ${loginResponse.success}")
 
-                            // ✅ EXTRAER DATOS DEL USUARIO
-                            val user = loginResponse.user ?: loginResponse.data?.user
-                            val token = loginResponse.token ?: loginResponse.data?.token ?: ""
+                            // ✅ VALIDAR SI EL LOGIN FUE EXITOSO (response code 200 + tiene user data)
+                            if (response.code == 200 && (loginResponse.user != null || loginResponse.data?.user != null)) {
+                                errorMessage = null
+                                showSuccessMessage = true
 
-                            val userName = user?.name ?: "Usuario"
-                            val userEmail = user?.email ?: email.trim()
+                                // ✅ EXTRAER DATOS DEL USUARIO
+                                val user = loginResponse.user ?: loginResponse.data?.user
+                                val token = loginResponse.token ?: loginResponse.data?.token ?: ""
 
-                            // ✅ ESPERAR 1.5 SEGUNDOS PARA QUE SE VEA EL MENSAJE DE ÉXITO
-                            delay(1500)
+                                val userName = user?.name ?: "Usuario"
+                                val userEmail = user?.email ?: email.trim()
 
-                            // ✅ DESHABILITAR LOADING ANTES DE NAVEGAR
-                            isLoading = false
+                                Log.d("LoginScreen", "✅ LOGIN EXITOSO")
+                                Log.d("LoginScreen", "Usuario: $userName")
+                                Log.d("LoginScreen", "Email: $userEmail")
+                                Log.d("LoginScreen", "Token: ${token.take(20)}...")
+                                Log.d("LoginScreen", "Esperando 1.5 segundos...")
 
-                            // ✅ LLAMAR AL CALLBACK PARA CAMBIAR A LA APP
-                            onLoginSuccess(userName, userEmail, token)
-                        } else {
-                            errorMessage = loginResponse.message
+                                // ✅ ESPERAR 1.5 SEGUNDOS PARA QUE SE VEA EL MENSAJE DE ÉXITO
+                                delay(1500)
+
+                                Log.d("LoginScreen", "Tiempo de espera completado")
+
+                                // ✅ DESHABILITAR LOADING ANTES DE NAVEGAR
+                                isLoading = false
+
+                                // ✅ LLAMAR AL CALLBACK PARA CAMBIAR A LA APP
+                                Log.d("LoginScreen", "Llamando onLoginSuccess con: userName=$userName, email=$userEmail")
+                                onLoginSuccess(userName, userEmail, token)
+                                Log.d("LoginScreen", "✅ onLoginSuccess ejecutado exitosamente")
+                            } else {
+                                errorMessage = loginResponse.message ?: "Error al iniciar sesión"
+                                showSuccessMessage = false
+                                isLoading = false
+                                Log.e("LoginScreen", "Login fallido: ${loginResponse.message}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("LoginScreen", "Error al parsear JSON", e)
+                            errorMessage = "Error al procesar respuesta: ${e.message}"
                             showSuccessMessage = false
                             isLoading = false
                         }
                     } else {
-                        errorMessage = "Error al iniciar sesión. Verifica tus credenciales."
+                        errorMessage = "Error al iniciar sesión (${response.code}). Verifica tus credenciales."
                         showSuccessMessage = false
                         isLoading = false
+                        Log.e("LoginScreen", "Error HTTP: ${response.code}")
                     }
                 }
             } catch (e: Exception) {
@@ -115,6 +149,7 @@ fun LoginScreen(
                     errorMessage = "Error de conexión: ${e.message}"
                     showSuccessMessage = false
                     isLoading = false
+                    Log.e("LoginScreen", "Excepción en login", e)
                 }
             }
         }

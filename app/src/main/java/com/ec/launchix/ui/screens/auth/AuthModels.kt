@@ -2,12 +2,13 @@ package com.ec.launchix.ui.screens.auth
 
 import com.google.gson.annotations.SerializedName
 
+
 // ✅ Modelo de Usuario (compartido)
 data class UserData(
-    @SerializedName("id") val id: Int,
-    @SerializedName("name") val name: String,
-    @SerializedName("username") val username: String?,
-    @SerializedName("email") val email: String
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("username") val username: String? = null,
+    @SerializedName("email") val email: String? = null
 )
 
 // ========== LOGIN ==========
@@ -18,15 +19,15 @@ data class LoginRequest(
 
 data class LoginResponse(
     @SerializedName("success") val success: Boolean,
-    @SerializedName("message") val message: String,
-    @SerializedName("token") val token: String?,
-    @SerializedName("user") val user: UserData?,
-    @SerializedName("data") val data: LoginData?
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: UserData? = null,
+    @SerializedName("data") val data: LoginData? = null
 )
 
 data class LoginData(
-    @SerializedName("token") val token: String,
-    @SerializedName("user") val user: UserData
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: UserData? = null
 )
 
 // ========== REGISTER ==========
@@ -40,14 +41,14 @@ data class RegisterRequest(
 
 data class RegisterResponse(
     @SerializedName("success") val success: Boolean,
-    @SerializedName("message") val message: String,
-    @SerializedName("token") val token: String?,
-    @SerializedName("user") val user: UserData?,
-    @SerializedName("data") val data: RegisterData?,
-    @SerializedName("errors") val errors: Map<String, List<String>>?
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: UserData? = null,
+    @SerializedName("data") val data: RegisterData? = null,
+    @SerializedName("errors") val errors: Map<String, List<String>>? = null
 )
 
 data class RegisterData(
-    @SerializedName("token") val token: String,
-    @SerializedName("user") val user: UserData
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: UserData? = null
 )

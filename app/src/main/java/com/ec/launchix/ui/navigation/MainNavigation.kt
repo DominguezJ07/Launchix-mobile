@@ -36,10 +36,30 @@ fun MainNavigation(
     var userPhone by rememberSaveable { mutableStateOf("+593 999 999 999") }
 
     LaunchedEffect(isLoggedIn) {
-        Log.d("MainNavigation", "isLoggedIn cambió a: $isLoggedIn")
+        Log.d("MainNavigation", "=== isLoggedIn cambió a: $isLoggedIn ===")
+        Log.d("MainNavigation", "userName: $userName")
+        Log.d("MainNavigation", "userEmail: $userEmail")
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // ✅ SI NO ESTÁ LOGUEADO, MUESTRA LA PANTALLA DE AUTH
+    if (!isLoggedIn) {
+        AuthPromptScreen(
+            onLoginSuccess = { name, email, token ->
+                Log.d("MainNavigation", "✅ Login exitoso desde pantalla inicial")
+                Log.d("MainNavigation", "  - name: $name")
+                Log.d("MainNavigation", "  - email: $email")
+                Log.d("MainNavigation", "  - token: ${token.take(20)}...")
+
+                userName = name
+                userEmail = email
+                authToken = token
+                isLoggedIn = true
+
+                Log.d("MainNavigation", "✅ Estado actualizado - isLoggedIn: $isLoggedIn")
+            }
+        )
+    } else {
+        // ✅ SI YA ESTÁ LOGUEADO, MUESTRA LA APP PRINCIPAL
         AppContent(
             isDarkMode = isDarkMode,
             onDarkModeToggle = onDarkModeToggle,
@@ -49,6 +69,7 @@ fun MainNavigation(
             profileImageUriString = profileImageUriString,
             isLoggedIn = isLoggedIn,
             onLogout = {
+                Log.d("MainNavigation", "🚪 Logout ejecutado")
                 isLoggedIn = false
                 userName = "Usuario Launchix"
                 userEmail = "usuario@launchix.com"
@@ -56,12 +77,11 @@ fun MainNavigation(
                 profileImageUriString = null
             },
             onLoginSuccess = { name, email, token ->
-                Log.d("MainNavigation", "onLoginSuccess llamado - name: $name, email: $email")
+                Log.d("MainNavigation", "✅ onLoginSuccess llamado desde app")
                 userName = name
                 userEmail = email
                 authToken = token
                 isLoggedIn = true
-                Log.d("MainNavigation", "isLoggedIn después de cambio: $isLoggedIn")
             },
             onUserInfoChange = { name, email, phone ->
                 userName = name
@@ -235,18 +255,12 @@ private fun AppContent(
                     cartViewModel = cartViewModel,
                     onProductClick = { productId -> },
                     onNavigateToCart = {
-                        if (isLoggedIn) {
-                            navController.navigate(Screen.Cart.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                        navController.navigate(Screen.Cart.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
-                        } else {
-                            navController.navigate("auth_checkout") {
-                                launchSingleTop = true
-                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
@@ -263,18 +277,12 @@ private fun AppContent(
                     initialCategory = category,
                     onProductClick = { productId -> },
                     onNavigateToCart = {
-                        if (isLoggedIn) {
-                            navController.navigate(Screen.Cart.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                        navController.navigate(Screen.Cart.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
-                        } else {
-                            navController.navigate("auth_checkout") {
-                                launchSingleTop = true
-                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
@@ -286,7 +294,6 @@ private fun AppContent(
                 )
             }
 
-            // ✅ MODIFICACIÓN PRINCIPAL: CartScreen ahora recibe isLoggedIn y onNavigateToAuth
             composable(Screen.Cart.route) {
                 CartScreen(
                     cartViewModel = cartViewModel,
@@ -299,8 +306,8 @@ private fun AppContent(
                             restoreState = true
                         }
                     },
-                    isLoggedIn = isLoggedIn, // ✅ Pasa el estado de login
-                    onNavigateToAuth = { // ✅ Callback para ir a autenticación
+                    isLoggedIn = isLoggedIn,
+                    onNavigateToAuth = {
                         navController.navigate("auth_checkout") {
                             launchSingleTop = true
                         }
@@ -308,12 +315,10 @@ private fun AppContent(
                 )
             }
 
-            // ✅ RUTA DE AUTH: Para checkout o login desde cualquier parte
             composable("auth_checkout") {
                 AuthPromptScreen(
                     onLoginSuccess = { name, email, token ->
                         onLoginSuccess(name, email, token)
-                        // Después de login exitoso, lo lleva de vuelta al carrito
                         navController.navigate(Screen.Cart.route) {
                             popUpTo("auth_checkout") { inclusive = true }
                         }
